@@ -197,7 +197,7 @@ MonoBehaviour:
   world: {fileID: 313055862}
   player: {fileID: 1926038039}
   chunkPrefab: {fileID: 1211305272}
-  blockDatabase: {fileID: 1783383458}
+  blockDatabase: {fileID: 0}
   renderDistance: 4
   chunksPerFrame: 2
 --- !u!4 &471599029
