@@ -56,8 +56,4 @@ public static class WorldUtils
         material.color = color;
         return material;
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 57877127a5c1809dd35936596b9e430046abc205
