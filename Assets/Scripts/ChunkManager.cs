@@ -26,7 +26,13 @@ public class ChunkManager : MonoBehaviour
         }
 
         if (blockDatabase == null)
+        {
             blockDatabase = FindAnyObjectByType<BlockDatabase>();
+            if (blockDatabase == null)
+            {
+                Debug.LogError("[ChunkManager] No BlockDatabase found in scene. Chunks will use fallback materials.");
+            }
+        }
 
         int pcx = Mathf.FloorToInt(player.x / Chunk.SIZE);
         int pcy = Mathf.FloorToInt(player.y / Chunk.SIZE);
@@ -131,12 +137,24 @@ public class ChunkManager : MonoBehaviour
 
     void SpawnChunk(Vector2Int coord)
     {
+        if (chunkPrefab == null)
+        {
+            Debug.LogError("[ChunkManager] chunkPrefab is not assigned. Cannot spawn chunks.");
+            return;
+        }
+
         Chunk c = Instantiate(
             chunkPrefab,
             new Vector3(coord.x * Chunk.SIZE, 0, coord.y * Chunk.SIZE),
             Quaternion.identity,
             transform
         );
+
+        if (c == null)
+        {
+            Debug.LogError($"[ChunkManager] Failed to instantiate chunk at ({coord.x}, {coord.y}).");
+            return;
+        }
 
         c.Build(world, coord.x, coord.y, blockDatabase);
 
