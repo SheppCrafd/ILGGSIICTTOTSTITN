@@ -29,7 +29,21 @@ public class World : MonoBehaviour
         cache.Clear();
         compactedChunkCache.Clear();
 
-        Debug.Log($"[World] INIT seed={seed}");
+        if (size <= 0)
+        {
+            Debug.LogError($"[World] Invalid world size ({size}). Defaulting to 128.");
+            size = 128;
+        }
+
+        if (height <= 0)
+        {
+            Debug.LogError($"[World] Invalid world height ({height}). Defaulting to 40.");
+            height = 40;
+        }
+
+#if UNITY_EDITOR
+        Debug.Log($"[World] INIT seed={seed}, size={size}, height={height}");
+#endif
     }
 
     public BlockType[] Get(int x, int y)
@@ -99,6 +113,13 @@ public class World : MonoBehaviour
         int localX = x - chunkKey.x * Chunk.SIZE;
         int localZ = z - chunkKey.y * Chunk.SIZE;
         int index = ((localX * Chunk.SIZE) + localZ) * height;
+
+        if (index < 0 || index + height > compacted.Length)
+        {
+            Debug.LogError($"[World] Compacted column index out of range at ({x}, {z}), chunk ({chunkKey.x}, {chunkKey.y}), index={index}, len={compacted.Length}.");
+            return null;
+        }
+
         BlockType[] col = new BlockType[height];
 
         for (int y = 0; y < height; y++)

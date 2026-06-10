@@ -22,7 +22,10 @@ public class Player : MonoBehaviour
     public void SpawnAtWorldCenter()
     {
         if (world == null)
+        {
+            Debug.LogError("[Player] Cannot spawn at world center: world is null.");
             return;
+        }
 
         x = world.size * 0.5f;
         y = world.size * 0.5f;
@@ -77,6 +80,14 @@ public class Player : MonoBehaviour
 
         var renderer = dot.GetComponent<MeshRenderer>();
         renderer.sharedMaterial = WorldUtils.CreateFallbackMaterial("Player", Color.red);
+        Shader shader = Shader.Find("Standard");
+        if (shader == null)
+        {
+            Debug.LogError("[Player] 'Standard' shader not found. Ensure it is included in Always Included Shaders.");
+            return;
+        }
+        renderer.sharedMaterial = new Material(shader);
+        renderer.sharedMaterial.color = Color.red;
 
         var collider = dot.GetComponent<Collider>();
         if (collider != null)

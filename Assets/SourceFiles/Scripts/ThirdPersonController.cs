@@ -416,6 +416,11 @@ public bool IsRespawning { get; set; } = false;
                 AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
             }
         }
+        public void ResetVerticalVelocity()
+        {
+            _verticalVelocity = 0f;
+        }
+
         public void ResetCameraRotation(float targetYaw)
 {
     // Reset the yaw and pitch to default values (targetYaw for Y rotation, and 0 for pitch)
@@ -424,8 +429,6 @@ public bool IsRespawning { get; set; } = false;
 
     // Reset the camera target's rotation explicitly
     CinemachineCameraTarget.transform.rotation = Quaternion.Euler(_cinemachineTargetPitch, _cinemachineTargetYaw, 0f);
-
-    Debug.Log($"Camera Yaw reset to {targetYaw} degrees.");
 }
     }
 

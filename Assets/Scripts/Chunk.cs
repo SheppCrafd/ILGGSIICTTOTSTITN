@@ -26,7 +26,15 @@ public class Chunk : MonoBehaviour
 
         var mr = GetComponent<MeshRenderer>();
         if (mr.material == null)
-            mr.material = new Material(Shader.Find("Standard"));
+        {
+            Shader shader = Shader.Find("Standard");
+            if (shader == null)
+            {
+                Debug.LogError("[Chunk] 'Standard' shader not found. Ensure it is included in Always Included Shaders.");
+                return;
+            }
+            mr.material = new Material(shader);
+        }
     }
 
     public void Build(World world, int cx, int cy)
@@ -36,6 +44,12 @@ public class Chunk : MonoBehaviour
 
     public void Build(World world, int cx, int cy, BlockDatabase blockDatabase)
     {
+        if (world == null)
+        {
+            Debug.LogError($"[Chunk] Build called with null world at ({cx}, {cy}).");
+            return;
+        }
+
         vertices.Clear();
         uvs.Clear();
         grassTopTriangles.Clear();
@@ -108,6 +122,20 @@ public class Chunk : MonoBehaviour
         }
 
         return null;
+    }
+
+    Material FallbackMaterial(string name, Color color)
+    {
+        Shader shader = Shader.Find("Standard");
+        if (shader == null)
+        {
+            Debug.LogError($"[Chunk] 'Standard' shader not found when creating fallback material '{name}'.");
+            shader = Shader.Find("Hidden/InternalErrorShader");
+        }
+        Material material = new Material(shader);
+        material.name = name;
+        material.color = color;
+        return material;
     }
 
     void BuildHeightMapMesh(World world, int startX, int startZ)
