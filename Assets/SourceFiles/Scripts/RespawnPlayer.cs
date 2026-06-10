@@ -83,17 +83,9 @@ namespace StarterAssets
 
         private void ResetVerticalVelocity()
         {
-            // Ensures no residual vertical velocity after respawning
             if (TryGetComponent<ThirdPersonController>(out ThirdPersonController controller))
             {
-                // Access the private _verticalVelocity via the public interface, if exposed
-                var verticalVelocityField = typeof(ThirdPersonController).GetField("_verticalVelocity",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                if (verticalVelocityField != null)
-                {
-                    verticalVelocityField.SetValue(controller, 0f);
-                }
+                controller.ResetVerticalVelocity();
             }
         }
     }
