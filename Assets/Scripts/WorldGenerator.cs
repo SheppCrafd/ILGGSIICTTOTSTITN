@@ -5,7 +5,6 @@ public class WorldGenerator
     const int BaseHeight = 12;
     const float HillHeight = 10f;
     const float DetailHeight = 2f;
-    const int DirtDepth = 3;
 
     private int seed;
 
@@ -44,12 +43,8 @@ public class WorldGenerator
 
         for (int z = 0; z < maxHeight; z++)
         {
-            if (z < h - DirtDepth - 1)
-                col[z] = BlockType.Stone;
-            else if (z < h - 1)
-                col[z] = BlockType.Dirt;
-            else if (z == h - 1)
-                col[z] = BlockType.Grass;
+            if (z < h)
+                col[z] = WorldUtils.BlockTypeAtDepth(h, z);
             else
                 col[z] = BlockType.Air;
         }

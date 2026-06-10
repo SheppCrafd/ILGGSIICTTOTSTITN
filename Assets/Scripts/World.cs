@@ -71,7 +71,7 @@ public class World : MonoBehaviour
                 Vector2Int columnKey = new Vector2Int(worldX, worldZ);
                 BlockType[] col;
 
-                if (worldX < 0 || worldZ < 0 || worldX >= size || worldZ >= size)
+                if (!WorldUtils.IsInBounds(worldX, worldZ, size))
                     col = EmptyColumn();
                 else if (!cache.TryGetValue(columnKey, out col))
                     col = gen.Column(worldX, worldZ, height);
@@ -89,8 +89,8 @@ public class World : MonoBehaviour
     BlockType[] TryLoadCompactedColumn(int x, int z)
     {
         Vector2Int chunkKey = new Vector2Int(
-            Mathf.FloorToInt((float)x / Chunk.SIZE),
-            Mathf.FloorToInt((float)z / Chunk.SIZE)
+            WorldUtils.ToChunkCoord(x),
+            WorldUtils.ToChunkCoord(z)
         );
 
         if (!compactedChunkCache.TryGetValue(chunkKey, out byte[] compacted))

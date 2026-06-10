@@ -59,16 +59,7 @@ public class Player : MonoBehaviour
 
         var col = world.Get(ix, iy);
 
-        z = 1;
-
-        for (int i = col.Length - 1; i >= 0; i--)
-        {
-            if (col[i] != BlockType.Air)
-            {
-                z = i + 1;
-                break;
-            }
-        }
+        z = WorldUtils.ColumnHeight(col);
 
         transform.position = new Vector3(x, z + 0.15f, y);
     }
@@ -85,8 +76,7 @@ public class Player : MonoBehaviour
         dot.transform.localScale = Vector3.one * markerSize;
 
         var renderer = dot.GetComponent<MeshRenderer>();
-        renderer.sharedMaterial = new Material(Shader.Find("Standard"));
-        renderer.sharedMaterial.color = Color.red;
+        renderer.sharedMaterial = WorldUtils.CreateFallbackMaterial("Player", Color.red);
 
         var collider = dot.GetComponent<Collider>();
         if (collider != null)
