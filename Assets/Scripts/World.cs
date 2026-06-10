@@ -76,7 +76,7 @@ public class World : MonoBehaviour
     public void CompactChunk(int cx, int cy)
     {
         Vector2Int chunkKey = new Vector2Int(cx, cy);
-        Debug.Log($"[World] Compacting chunk ({cx}, {cy}) into cache.");
+        LogCacheEvent($"[World] Compacting chunk ({cx}, {cy}) into cache.");
 
         byte[] compacted = new byte[Chunk.SIZE * Chunk.SIZE * height];
         int index = 0;
@@ -105,7 +105,7 @@ public class World : MonoBehaviour
         compactedChunkCache[chunkKey] = compacted;
         loggedCompactedChunkLoads.Remove(chunkKey);
 
-        Debug.Log($"[World] Cached chunk ({cx}, {cy}). Bytes={compacted.Length}, columnCache={cache.Count}, compactedChunks={compactedChunkCache.Count}.");
+        LogCacheEvent($"[World] Cached chunk ({cx}, {cy}). Bytes={compacted.Length}, columnCache={cache.Count}, compactedChunks={compactedChunkCache.Count}.");
     }
 
     BlockType[] TryLoadCompactedColumn(int x, int z)
@@ -119,7 +119,7 @@ public class World : MonoBehaviour
             return null;
 
         if (loggedCompactedChunkLoads.Add(chunkKey))
-            Debug.Log($"[World] Loading chunk ({chunkKey.x}, {chunkKey.y}) from compacted cache.");
+            LogCacheEvent($"[World] Loading chunk ({chunkKey.x}, {chunkKey.y}) from compacted cache.");
 
         int localX = x - chunkKey.x * Chunk.SIZE;
         int localZ = z - chunkKey.y * Chunk.SIZE;
@@ -137,6 +137,12 @@ public class World : MonoBehaviour
             col[y] = (BlockType)compacted[index + y];
 
         return col;
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    void LogCacheEvent(string message)
+    {
+        Debug.Log(message);
     }
 
     internal BlockType[] EmptyColumn()

@@ -40,7 +40,7 @@ public class ChunkManager : MonoBehaviour
 
         if (playerChunk != lastPlayerChunk)
         {
-            Debug.Log($"[ChunkManager] Player entered chunk ({playerChunk.x}, {playerChunk.y}); refreshing visible chunks.");
+            LogChunkEvent($"[ChunkManager] Player entered chunk ({playerChunk.x}, {playerChunk.y}); refreshing visible chunks.");
             lastPlayerChunk = playerChunk;
             pendingChunks.Clear();
             queuedChunks.Clear();
@@ -72,12 +72,12 @@ public class ChunkManager : MonoBehaviour
                     pendingChunks.Enqueue(coord);
                     queuedChunks.Add(coord);
                     queuedCount++;
-                    Debug.Log($"[ChunkManager] Queued chunk ({coord.x}, {coord.y}) for loading.");
+                    LogChunkEvent($"[ChunkManager] Queued chunk ({coord.x}, {coord.y}) for loading.");
                 }
             }
         }
 
-        Debug.Log($"[ChunkManager] Queued {queuedCount} chunk(s) around player chunk ({playerChunk.x}, {playerChunk.y}). Pending={pendingChunks.Count}, active={chunks.Count}.");
+        LogChunkEvent($"[ChunkManager] Queued {queuedCount} chunk(s) around player chunk ({playerChunk.x}, {playerChunk.y}). Pending={pendingChunks.Count}, active={chunks.Count}.");
     }
 
     void SpawnQueuedChunks()
@@ -134,7 +134,7 @@ public class ChunkManager : MonoBehaviour
         {
             Vector2Int coord = despawnBuffer[i];
 
-            Debug.Log($"[ChunkManager] Unloading chunk ({coord.x}, {coord.y}); compacting into cache.");
+            LogChunkEvent($"[ChunkManager] Unloading chunk ({coord.x}, {coord.y}); compacting into cache.");
 
             if (world != null)
                 world.CompactChunk(coord.x, coord.y);
@@ -142,7 +142,7 @@ public class ChunkManager : MonoBehaviour
             Destroy(chunks[coord].gameObject);
             chunks.Remove(coord);
 
-            Debug.Log($"[ChunkManager] Unloaded chunk ({coord.x}, {coord.y}). Active={chunks.Count}.");
+            LogChunkEvent($"[ChunkManager] Unloaded chunk ({coord.x}, {coord.y}). Active={chunks.Count}.");
         }
     }
 
@@ -154,7 +154,7 @@ public class ChunkManager : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[ChunkManager] Loading chunk ({coord.x}, {coord.y}). Pending={pendingChunks.Count}, active={chunks.Count}.");
+        LogChunkEvent($"[ChunkManager] Loading chunk ({coord.x}, {coord.y}). Pending={pendingChunks.Count}, active={chunks.Count}.");
 
         Chunk c = Instantiate(
             chunkPrefab,
@@ -173,6 +173,12 @@ public class ChunkManager : MonoBehaviour
 
         chunks.Add(coord, c);
 
-        Debug.Log($"[ChunkManager] Loaded chunk ({coord.x}, {coord.y}). Active={chunks.Count}.");
+        LogChunkEvent($"[ChunkManager] Loaded chunk ({coord.x}, {coord.y}). Active={chunks.Count}.");
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    void LogChunkEvent(string message)
+    {
+        Debug.Log(message);
     }
 }
