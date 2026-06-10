@@ -29,7 +29,9 @@ public class World : MonoBehaviour
         cache.Clear();
         compactedChunkCache.Clear();
 
+#if UNITY_EDITOR
         Debug.Log($"[World] INIT seed={seed}");
+#endif
     }
 
     public BlockType[] Get(int x, int y)

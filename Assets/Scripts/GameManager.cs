@@ -18,6 +18,8 @@ public class GameManager : MonoBehaviour
         if (chunkManager != null)
             chunkManager.world = world;
 
+#if UNITY_EDITOR
         Debug.Log("World seed: " + seed);
+#endif
     }
 }
