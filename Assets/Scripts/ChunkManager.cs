@@ -14,6 +14,7 @@ public class ChunkManager : MonoBehaviour
     Dictionary<Vector2Int, Chunk> chunks = new();
     Queue<Vector2Int> pendingChunks = new();
     HashSet<Vector2Int> queuedChunks = new();
+    List<Vector2Int> despawnBuffer = new();
     Vector2Int lastPlayerChunk = new Vector2Int(int.MinValue, int.MinValue);
 
     void Update()
@@ -36,6 +37,7 @@ public class ChunkManager : MonoBehaviour
             lastPlayerChunk = playerChunk;
             pendingChunks.Clear();
             queuedChunks.Clear();
+            DespawnDistantChunks(playerChunk);
             QueueVisibleChunks(playerChunk);
         }
 
@@ -85,6 +87,36 @@ public class ChunkManager : MonoBehaviour
             coord.y >= 0 &&
             coord.x * Chunk.SIZE < world.size &&
             coord.y * Chunk.SIZE < world.size;
+    }
+
+    bool IsInsideRenderDistance(Vector2Int coord, Vector2Int playerChunk)
+    {
+        return Mathf.Max(
+            Mathf.Abs(coord.x - playerChunk.x),
+            Mathf.Abs(coord.y - playerChunk.y)
+        ) <= renderDistance;
+    }
+
+    void DespawnDistantChunks(Vector2Int playerChunk)
+    {
+        despawnBuffer.Clear();
+
+        foreach (var chunk in chunks)
+        {
+            if (!IsInsideRenderDistance(chunk.Key, playerChunk))
+                despawnBuffer.Add(chunk.Key);
+        }
+
+        for (int i = 0; i < despawnBuffer.Count; i++)
+        {
+            Vector2Int coord = despawnBuffer[i];
+
+            if (world != null)
+                world.CompactChunk(coord.x, coord.y);
+
+            Destroy(chunks[coord].gameObject);
+            chunks.Remove(coord);
+        }
     }
 
     void SpawnChunk(Vector2Int coord)
