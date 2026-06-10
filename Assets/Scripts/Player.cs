@@ -59,7 +59,7 @@ public class Player : MonoBehaviour
 
         var col = world.Get(ix, iy);
 
-        z = WorldUtils.ColumnHeight(col);
+        z = Mathf.Max(1, WorldUtils.ColumnHeight(col));
 
         transform.position = new Vector3(x, z + 0.15f, y);
     }
