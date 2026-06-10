@@ -34,8 +34,8 @@ public class ChunkManager : MonoBehaviour
             }
         }
 
-        int pcx = Mathf.FloorToInt(player.x / Chunk.SIZE);
-        int pcy = Mathf.FloorToInt(player.y / Chunk.SIZE);
+        int pcx = WorldUtils.ToChunkCoord(player.x);
+        int pcy = WorldUtils.ToChunkCoord(player.y);
         Vector2Int playerChunk = new Vector2Int(pcx, pcy);
 
         if (playerChunk != lastPlayerChunk)

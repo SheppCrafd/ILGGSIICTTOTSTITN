@@ -88,10 +88,10 @@ public class Chunk : MonoBehaviour
 
         mr.sharedMaterials = new Material[]
         {
-            grassTop != null ? grassTop : FallbackMaterial("Grass Top", Color.green),
-            grassSide != null ? grassSide : FallbackMaterial("Grass Side", new Color(0.45f, 0.75f, 0.25f)),
-            dirt != null ? dirt : FallbackMaterial("Dirt", new Color(0.45f, 0.25f, 0.12f)),
-            stone != null ? stone : FallbackMaterial("Stone", Color.gray)
+            grassTop != null ? grassTop : WorldUtils.CreateFallbackMaterial("Grass Top", Color.green),
+            grassSide != null ? grassSide : WorldUtils.CreateFallbackMaterial("Grass Side", new Color(0.45f, 0.75f, 0.25f)),
+            dirt != null ? dirt : WorldUtils.CreateFallbackMaterial("Dirt", new Color(0.45f, 0.25f, 0.12f)),
+            stone != null ? stone : WorldUtils.CreateFallbackMaterial("Stone", Color.gray)
         };
     }
 
@@ -124,20 +124,6 @@ public class Chunk : MonoBehaviour
         return null;
     }
 
-    Material FallbackMaterial(string name, Color color)
-    {
-        Shader shader = Shader.Find("Standard");
-        if (shader == null)
-        {
-            Debug.LogError($"[Chunk] 'Standard' shader not found when creating fallback material '{name}'.");
-            shader = Shader.Find("Hidden/InternalErrorShader");
-        }
-        Material material = new Material(shader);
-        material.name = name;
-        material.color = color;
-        return material;
-    }
-
     void BuildHeightMapMesh(World world, int startX, int startZ)
     {
         int[,] heights = new int[SIZE, SIZE];
@@ -149,10 +135,10 @@ public class Chunk : MonoBehaviour
                 int worldX = startX + x;
                 int worldZ = startZ + z;
 
-                if (worldX < 0 || worldZ < 0 || worldX >= world.size || worldZ >= world.size)
+                if (!WorldUtils.IsInBounds(worldX, worldZ, world.size))
                     continue;
 
-                heights[x, z] = ColumnHeight(world.Get(worldX, worldZ));
+                heights[x, z] = WorldUtils.ColumnHeight(world.Get(worldX, worldZ));
             }
         }
 
@@ -174,45 +160,25 @@ public class Chunk : MonoBehaviour
         }
     }
 
-    internal static int ColumnHeight(BlockType[] col)
-    {
-        for (int y = col.Length - 1; y >= 0; y--)
-        {
-            if (col[y] != BlockType.Air)
-                return y + 1;
-        }
-
-        return 0;
-    }
+    internal static int ColumnHeight(BlockType[] col) => WorldUtils.ColumnHeight(col);
 
     void AddSideFaces(World world, int startX, int startZ, int x, int z, int height, int dx, int dz)
     {
         int neighborHeight = GetColumnHeight(world, startX + x + dx, startZ + z + dz);
 
         for (int y = neighborHeight; y < height; y++)
-            AddSideFace(x, y, z, dx, dz, BlockTypeAtDepth(height, y));
+            AddSideFace(x, y, z, dx, dz, WorldUtils.BlockTypeAtDepth(height, y));
     }
 
     int GetColumnHeight(World world, int worldX, int worldZ)
     {
-        if (worldX < 0 || worldZ < 0 || worldX >= world.size || worldZ >= world.size)
+        if (!WorldUtils.IsInBounds(worldX, worldZ, world.size))
             return 0;
 
-        return ColumnHeight(world.Get(worldX, worldZ));
+        return WorldUtils.ColumnHeight(world.Get(worldX, worldZ));
     }
 
-    internal static BlockType BlockTypeAtDepth(int columnHeight, int y)
-    {
-        int depthFromTop = columnHeight - 1 - y;
-
-        if (depthFromTop == 0)
-            return BlockType.Grass;
-
-        if (depthFromTop <= 3)
-            return BlockType.Dirt;
-
-        return BlockType.Stone;
-    }
+    internal static BlockType BlockTypeAtDepth(int columnHeight, int y) => WorldUtils.BlockTypeAtDepth(columnHeight, y);
 
     void AddTopFace(int x, int height, int z)
     {
