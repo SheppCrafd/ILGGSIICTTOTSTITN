@@ -19,3 +19,13 @@ MemoryCaptures/
 
 .DS_Store
 Thumbs.db
+
+# Secrets and credentials
+*.env
+*.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
