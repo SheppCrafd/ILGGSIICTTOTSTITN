@@ -1,5 +1,8 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
+
+[assembly: InternalsVisibleTo("GameTests.Editor")]
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
@@ -151,7 +154,7 @@ public class Chunk : MonoBehaviour
         }
     }
 
-    int ColumnHeight(BlockType[] col)
+    internal static int ColumnHeight(BlockType[] col)
     {
         for (int y = col.Length - 1; y >= 0; y--)
         {
@@ -178,7 +181,7 @@ public class Chunk : MonoBehaviour
         return ColumnHeight(world.Get(worldX, worldZ));
     }
 
-    BlockType BlockTypeAtDepth(int columnHeight, int y)
+    internal static BlockType BlockTypeAtDepth(int columnHeight, int y)
     {
         int depthFromTop = columnHeight - 1 - y;
 

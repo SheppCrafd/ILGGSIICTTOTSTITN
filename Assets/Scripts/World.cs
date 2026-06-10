@@ -107,7 +107,7 @@ public class World : MonoBehaviour
         return col;
     }
 
-    BlockType[] EmptyColumn()
+    internal BlockType[] EmptyColumn()
     {
         BlockType[] col = new BlockType[height];
 

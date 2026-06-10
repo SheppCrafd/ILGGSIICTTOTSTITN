@@ -81,20 +81,30 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    bool IsInsideWorld(Vector2Int coord)
+    internal static bool IsInsideWorld(Vector2Int coord, int worldSize)
     {
         return coord.x >= 0 &&
             coord.y >= 0 &&
-            coord.x * Chunk.SIZE < world.size &&
-            coord.y * Chunk.SIZE < world.size;
+            coord.x * Chunk.SIZE < worldSize &&
+            coord.y * Chunk.SIZE < worldSize;
     }
 
-    bool IsInsideRenderDistance(Vector2Int coord, Vector2Int playerChunk)
+    bool IsInsideWorld(Vector2Int coord)
+    {
+        return IsInsideWorld(coord, world.size);
+    }
+
+    internal static bool IsInsideRenderDistance(Vector2Int coord, Vector2Int playerChunk, int renderDist)
     {
         return Mathf.Max(
             Mathf.Abs(coord.x - playerChunk.x),
             Mathf.Abs(coord.y - playerChunk.y)
-        ) <= renderDistance;
+        ) <= renderDist;
+    }
+
+    bool IsInsideRenderDistance(Vector2Int coord, Vector2Int playerChunk)
+    {
+        return IsInsideRenderDistance(coord, playerChunk, renderDistance);
     }
 
     void DespawnDistantChunks(Vector2Int playerChunk)
