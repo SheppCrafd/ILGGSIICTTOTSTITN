@@ -40,6 +40,7 @@ public class ChunkManager : MonoBehaviour
 
         if (playerChunk != lastPlayerChunk)
         {
+            Debug.Log($"[ChunkManager] Player entered chunk ({playerChunk.x}, {playerChunk.y}); refreshing visible chunks.");
             lastPlayerChunk = playerChunk;
             pendingChunks.Clear();
             queuedChunks.Clear();
@@ -52,6 +53,8 @@ public class ChunkManager : MonoBehaviour
 
     void QueueVisibleChunks(Vector2Int playerChunk)
     {
+        int queuedCount = 0;
+
         for (int radius = 0; radius <= renderDistance; radius++)
         {
             for (int x = -radius; x <= radius; x++)
@@ -68,9 +71,13 @@ public class ChunkManager : MonoBehaviour
 
                     pendingChunks.Enqueue(coord);
                     queuedChunks.Add(coord);
+                    queuedCount++;
+                    Debug.Log($"[ChunkManager] Queued chunk ({coord.x}, {coord.y}) for loading.");
                 }
             }
         }
+
+        Debug.Log($"[ChunkManager] Queued {queuedCount} chunk(s) around player chunk ({playerChunk.x}, {playerChunk.y}). Pending={pendingChunks.Count}, active={chunks.Count}.");
     }
 
     void SpawnQueuedChunks()
@@ -127,11 +134,15 @@ public class ChunkManager : MonoBehaviour
         {
             Vector2Int coord = despawnBuffer[i];
 
+            Debug.Log($"[ChunkManager] Unloading chunk ({coord.x}, {coord.y}); compacting into cache.");
+
             if (world != null)
                 world.CompactChunk(coord.x, coord.y);
 
             Destroy(chunks[coord].gameObject);
             chunks.Remove(coord);
+
+            Debug.Log($"[ChunkManager] Unloaded chunk ({coord.x}, {coord.y}). Active={chunks.Count}.");
         }
     }
 
@@ -142,6 +153,8 @@ public class ChunkManager : MonoBehaviour
             Debug.LogError("[ChunkManager] chunkPrefab is not assigned. Cannot spawn chunks.");
             return;
         }
+
+        Debug.Log($"[ChunkManager] Loading chunk ({coord.x}, {coord.y}). Pending={pendingChunks.Count}, active={chunks.Count}.");
 
         Chunk c = Instantiate(
             chunkPrefab,
@@ -159,5 +172,7 @@ public class ChunkManager : MonoBehaviour
         c.Build(world, coord.x, coord.y, blockDatabase);
 
         chunks.Add(coord, c);
+
+        Debug.Log($"[ChunkManager] Loaded chunk ({coord.x}, {coord.y}). Active={chunks.Count}.");
     }
 }

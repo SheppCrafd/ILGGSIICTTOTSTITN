@@ -12,6 +12,8 @@ public class World : MonoBehaviour
         new Dictionary<Vector2Int, BlockType[]>();
     private Dictionary<Vector2Int, byte[]> compactedChunkCache =
         new Dictionary<Vector2Int, byte[]>();
+    private HashSet<Vector2Int> loggedCompactedChunkLoads =
+        new HashSet<Vector2Int>();
 
     void Awake()
     {
@@ -28,6 +30,7 @@ public class World : MonoBehaviour
         gen = new WorldGenerator(seed);
         cache.Clear();
         compactedChunkCache.Clear();
+        loggedCompactedChunkLoads.Clear();
 
         if (size <= 0)
         {
@@ -73,6 +76,8 @@ public class World : MonoBehaviour
     public void CompactChunk(int cx, int cy)
     {
         Vector2Int chunkKey = new Vector2Int(cx, cy);
+        Debug.Log($"[World] Compacting chunk ({cx}, {cy}) into cache.");
+
         byte[] compacted = new byte[Chunk.SIZE * Chunk.SIZE * height];
         int index = 0;
 
@@ -98,6 +103,9 @@ public class World : MonoBehaviour
         }
 
         compactedChunkCache[chunkKey] = compacted;
+        loggedCompactedChunkLoads.Remove(chunkKey);
+
+        Debug.Log($"[World] Cached chunk ({cx}, {cy}). Bytes={compacted.Length}, columnCache={cache.Count}, compactedChunks={compactedChunkCache.Count}.");
     }
 
     BlockType[] TryLoadCompactedColumn(int x, int z)
@@ -109,6 +117,9 @@ public class World : MonoBehaviour
 
         if (!compactedChunkCache.TryGetValue(chunkKey, out byte[] compacted))
             return null;
+
+        if (loggedCompactedChunkLoads.Add(chunkKey))
+            Debug.Log($"[World] Loading chunk ({chunkKey.x}, {chunkKey.y}) from compacted cache.");
 
         int localX = x - chunkKey.x * Chunk.SIZE;
         int localZ = z - chunkKey.y * Chunk.SIZE;
@@ -137,8 +148,4 @@ public class World : MonoBehaviour
 
         return col;
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 57877127a5c1809dd35936596b9e430046abc205
