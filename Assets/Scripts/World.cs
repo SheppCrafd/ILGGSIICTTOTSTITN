@@ -12,8 +12,10 @@ public class World : MonoBehaviour
         new Dictionary<Vector2Int, BlockType[]>();
     private Dictionary<Vector2Int, byte[]> compactedChunkCache =
         new Dictionary<Vector2Int, byte[]>();
+#if UNITY_EDITOR
     private HashSet<Vector2Int> loggedCompactedChunkLoads =
         new HashSet<Vector2Int>();
+#endif
 
     void Awake()
     {
@@ -30,7 +32,9 @@ public class World : MonoBehaviour
         gen = new WorldGenerator(seed);
         cache.Clear();
         compactedChunkCache.Clear();
+#if UNITY_EDITOR
         loggedCompactedChunkLoads.Clear();
+#endif
 
         if (size <= 0)
         {
@@ -44,9 +48,7 @@ public class World : MonoBehaviour
             height = 40;
         }
 
-#if UNITY_EDITOR
-        Debug.Log($"[World] INIT seed={seed}, size={size}, height={height}");
-#endif
+        LogCacheEvent($"[World] INIT seed={seed}, size={size}, height={height}");
     }
 
     public BlockType[] Get(int x, int y)
@@ -103,7 +105,9 @@ public class World : MonoBehaviour
         }
 
         compactedChunkCache[chunkKey] = compacted;
+#if UNITY_EDITOR
         loggedCompactedChunkLoads.Remove(chunkKey);
+#endif
 
         LogCacheEvent($"[World] Cached chunk ({cx}, {cy}). Bytes={compacted.Length}, columnCache={cache.Count}, compactedChunks={compactedChunkCache.Count}.");
     }
@@ -118,8 +122,10 @@ public class World : MonoBehaviour
         if (!compactedChunkCache.TryGetValue(chunkKey, out byte[] compacted))
             return null;
 
+#if UNITY_EDITOR
         if (loggedCompactedChunkLoads.Add(chunkKey))
             LogCacheEvent($"[World] Loading chunk ({chunkKey.x}, {chunkKey.y}) from compacted cache.");
+#endif
 
         int localX = x - chunkKey.x * Chunk.SIZE;
         int localZ = z - chunkKey.y * Chunk.SIZE;
