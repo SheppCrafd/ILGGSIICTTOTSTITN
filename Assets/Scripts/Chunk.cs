@@ -124,20 +124,6 @@ public class Chunk : MonoBehaviour
         return null;
     }
 
-    Material FallbackMaterial(string name, Color color)
-    {
-        Shader shader = Shader.Find("Standard");
-        if (shader == null)
-        {
-            Debug.LogError($"[Chunk] 'Standard' shader not found when creating fallback material '{name}'.");
-            shader = Shader.Find("Hidden/InternalErrorShader");
-        }
-        Material material = new Material(shader);
-        material.name = name;
-        material.color = color;
-        return material;
-    }
-
     void BuildHeightMapMesh(World world, int startX, int startZ)
     {
         int[,] heights = new int[SIZE, SIZE];

@@ -45,7 +45,13 @@ public static class WorldUtils
 
     public static Material CreateFallbackMaterial(string name, Color color)
     {
-        Material material = new Material(Shader.Find("Standard"));
+        Shader shader = Shader.Find("Standard");
+        if (shader == null)
+        {
+            Debug.LogError($"[WorldUtils] 'Standard' shader not found when creating fallback material '{name}'.");
+            shader = Shader.Find("Hidden/InternalErrorShader");
+        }
+        Material material = new Material(shader);
         material.name = name;
         material.color = color;
         return material;
