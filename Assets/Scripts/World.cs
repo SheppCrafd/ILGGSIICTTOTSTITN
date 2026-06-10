@@ -12,6 +12,10 @@ public class World : MonoBehaviour
         new Dictionary<Vector2Int, BlockType[]>();
     private Dictionary<Vector2Int, byte[]> compactedChunkCache =
         new Dictionary<Vector2Int, byte[]>();
+#if UNITY_EDITOR
+    private HashSet<Vector2Int> loggedCompactedChunkLoads =
+        new HashSet<Vector2Int>();
+#endif
 
     void Awake()
     {
@@ -28,6 +32,9 @@ public class World : MonoBehaviour
         gen = new WorldGenerator(seed);
         cache.Clear();
         compactedChunkCache.Clear();
+#if UNITY_EDITOR
+        loggedCompactedChunkLoads.Clear();
+#endif
 
         if (size <= 0)
         {
@@ -41,9 +48,7 @@ public class World : MonoBehaviour
             height = 40;
         }
 
-#if UNITY_EDITOR
-        Debug.Log($"[World] INIT seed={seed}, size={size}, height={height}");
-#endif
+        LogCacheEvent($"[World] INIT seed={seed}, size={size}, height={height}");
     }
 
     public BlockType[] Get(int x, int y)
@@ -73,6 +78,8 @@ public class World : MonoBehaviour
     public void CompactChunk(int cx, int cy)
     {
         Vector2Int chunkKey = new Vector2Int(cx, cy);
+        LogCacheEvent($"[World] Compacting chunk ({cx}, {cy}) into cache.");
+
         byte[] compacted = new byte[Chunk.SIZE * Chunk.SIZE * height];
         int index = 0;
 
@@ -98,6 +105,11 @@ public class World : MonoBehaviour
         }
 
         compactedChunkCache[chunkKey] = compacted;
+#if UNITY_EDITOR
+        loggedCompactedChunkLoads.Remove(chunkKey);
+#endif
+
+        LogCacheEvent($"[World] Cached chunk ({cx}, {cy}). Bytes={compacted.Length}, columnCache={cache.Count}, compactedChunks={compactedChunkCache.Count}.");
     }
 
     BlockType[] TryLoadCompactedColumn(int x, int z)
@@ -109,6 +121,11 @@ public class World : MonoBehaviour
 
         if (!compactedChunkCache.TryGetValue(chunkKey, out byte[] compacted))
             return null;
+
+#if UNITY_EDITOR
+        if (loggedCompactedChunkLoads.Add(chunkKey))
+            LogCacheEvent($"[World] Loading chunk ({chunkKey.x}, {chunkKey.y}) from compacted cache.");
+#endif
 
         int localX = x - chunkKey.x * Chunk.SIZE;
         int localZ = z - chunkKey.y * Chunk.SIZE;
@@ -128,6 +145,12 @@ public class World : MonoBehaviour
         return col;
     }
 
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    void LogCacheEvent(string message)
+    {
+        Debug.Log(message);
+    }
+
     internal BlockType[] EmptyColumn()
     {
         BlockType[] col = new BlockType[height];
@@ -137,8 +160,4 @@ public class World : MonoBehaviour
 
         return col;
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 57877127a5c1809dd35936596b9e430046abc205
