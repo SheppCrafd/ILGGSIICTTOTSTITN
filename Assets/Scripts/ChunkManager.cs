@@ -14,6 +14,7 @@ public class ChunkManager : MonoBehaviour
     Dictionary<Vector2Int, Chunk> chunks = new();
     Queue<Vector2Int> pendingChunks = new();
     HashSet<Vector2Int> queuedChunks = new();
+    List<Vector2Int> despawnBuffer = new();
     Vector2Int lastPlayerChunk = new Vector2Int(int.MinValue, int.MinValue);
 
     void Update()
@@ -25,10 +26,16 @@ public class ChunkManager : MonoBehaviour
         }
 
         if (blockDatabase == null)
+        {
             blockDatabase = FindAnyObjectByType<BlockDatabase>();
+            if (blockDatabase == null)
+            {
+                Debug.LogError("[ChunkManager] No BlockDatabase found in scene. Chunks will use fallback materials.");
+            }
+        }
 
-        int pcx = Mathf.FloorToInt(player.x / Chunk.SIZE);
-        int pcy = Mathf.FloorToInt(player.y / Chunk.SIZE);
+        int pcx = WorldUtils.ToChunkCoord(player.x);
+        int pcy = WorldUtils.ToChunkCoord(player.y);
         Vector2Int playerChunk = new Vector2Int(pcx, pcy);
 
         if (playerChunk != lastPlayerChunk)
@@ -36,6 +43,7 @@ public class ChunkManager : MonoBehaviour
             lastPlayerChunk = playerChunk;
             pendingChunks.Clear();
             queuedChunks.Clear();
+            DespawnDistantChunks(playerChunk);
             QueueVisibleChunks(playerChunk);
         }
 
@@ -79,22 +87,74 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    bool IsInsideWorld(Vector2Int coord)
+    internal static bool IsInsideWorld(Vector2Int coord, int worldSize)
     {
         return coord.x >= 0 &&
             coord.y >= 0 &&
-            coord.x * Chunk.SIZE < world.size &&
-            coord.y * Chunk.SIZE < world.size;
+            coord.x * Chunk.SIZE < worldSize &&
+            coord.y * Chunk.SIZE < worldSize;
+    }
+
+    bool IsInsideWorld(Vector2Int coord)
+    {
+        return IsInsideWorld(coord, world.size);
+    }
+
+    internal static bool IsInsideRenderDistance(Vector2Int coord, Vector2Int playerChunk, int renderDist)
+    {
+        return Mathf.Max(
+            Mathf.Abs(coord.x - playerChunk.x),
+            Mathf.Abs(coord.y - playerChunk.y)
+        ) <= renderDist;
+    }
+
+    bool IsInsideRenderDistance(Vector2Int coord, Vector2Int playerChunk)
+    {
+        return IsInsideRenderDistance(coord, playerChunk, renderDistance);
+    }
+
+    void DespawnDistantChunks(Vector2Int playerChunk)
+    {
+        despawnBuffer.Clear();
+
+        foreach (var chunk in chunks)
+        {
+            if (!IsInsideRenderDistance(chunk.Key, playerChunk))
+                despawnBuffer.Add(chunk.Key);
+        }
+
+        for (int i = 0; i < despawnBuffer.Count; i++)
+        {
+            Vector2Int coord = despawnBuffer[i];
+
+            if (world != null)
+                world.CompactChunk(coord.x, coord.y);
+
+            Destroy(chunks[coord].gameObject);
+            chunks.Remove(coord);
+        }
     }
 
     void SpawnChunk(Vector2Int coord)
     {
+        if (chunkPrefab == null)
+        {
+            Debug.LogError("[ChunkManager] chunkPrefab is not assigned. Cannot spawn chunks.");
+            return;
+        }
+
         Chunk c = Instantiate(
             chunkPrefab,
             new Vector3(coord.x * Chunk.SIZE, 0, coord.y * Chunk.SIZE),
             Quaternion.identity,
             transform
         );
+
+        if (c == null)
+        {
+            Debug.LogError($"[ChunkManager] Failed to instantiate chunk at ({coord.x}, {coord.y}).");
+            return;
+        }
 
         c.Build(world, coord.x, coord.y, blockDatabase);
 

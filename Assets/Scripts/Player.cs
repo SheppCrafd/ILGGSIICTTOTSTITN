@@ -22,7 +22,10 @@ public class Player : MonoBehaviour
     public void SpawnAtWorldCenter()
     {
         if (world == null)
+        {
+            Debug.LogError("[Player] Cannot spawn at world center: world is null.");
             return;
+        }
 
         x = world.size * 0.5f;
         y = world.size * 0.5f;
@@ -59,16 +62,7 @@ public class Player : MonoBehaviour
 
         var col = world.Get(ix, iy);
 
-        z = 1;
-
-        for (int i = col.Length - 1; i >= 0; i--)
-        {
-            if (col[i] != BlockType.Air)
-            {
-                z = i + 1;
-                break;
-            }
-        }
+        z = Mathf.Max(1, WorldUtils.ColumnHeight(col));
 
         transform.position = new Vector3(x, z + 0.15f, y);
     }
@@ -85,7 +79,14 @@ public class Player : MonoBehaviour
         dot.transform.localScale = Vector3.one * markerSize;
 
         var renderer = dot.GetComponent<MeshRenderer>();
-        renderer.sharedMaterial = new Material(Shader.Find("Standard"));
+        renderer.sharedMaterial = WorldUtils.CreateFallbackMaterial("Player", Color.red);
+        Shader shader = Shader.Find("Standard");
+        if (shader == null)
+        {
+            Debug.LogError("[Player] 'Standard' shader not found. Ensure it is included in Always Included Shaders.");
+            return;
+        }
+        renderer.sharedMaterial = new Material(shader);
         renderer.sharedMaterial.color = Color.red;
 
         var collider = dot.GetComponent<Collider>();
