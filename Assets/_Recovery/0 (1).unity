@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5acbf69105d414043895736d8a71a1e4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::World
-  size: 64000
+  size: 6400
   height: 320
 --- !u!4 &313055863
 Transform:
