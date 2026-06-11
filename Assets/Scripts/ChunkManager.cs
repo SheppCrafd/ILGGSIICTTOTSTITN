@@ -8,7 +8,7 @@ public class ChunkManager : MonoBehaviour
     public Chunk chunkPrefab;
     public BlockDatabase blockDatabase;
 
-    public int renderDistance = 4;
+    public int renderDistance = 2;
     public int chunksPerFrame = 1;
 
     Dictionary<Vector2Int, Chunk> chunks = new();
@@ -49,15 +49,20 @@ public class ChunkManager : MonoBehaviour
             QueueVisibleChunks(playerChunk);
         }
 
-        UpdateVisibilityMask();
-
-        if (lastVisibilityVersion != BlockVisibilityMask.Version)
-        {
-            lastVisibilityVersion = BlockVisibilityMask.Version;
-            RefreshActiveChunks();
-        }
-
         SpawnQueuedChunks();
+
+        // DISABLED: Visibility-based chunk rebuilding was causing massive memory leak
+        // Chunks only rebuild when explicitly needed (e.g., block placement/destruction)
+        // if (pendingChunks.Count == 0 && Time.frameCount % 10 == 0)
+        // {
+        //     UpdateVisibilityMask();
+        //
+        //     if (lastVisibilityVersion != BlockVisibilityMask.Version)
+        //     {
+        //         lastVisibilityVersion = BlockVisibilityMask.Version;
+        //         RefreshActiveChunks();
+        //     }
+        // }
     }
 
     void QueueVisibleChunks(Vector2Int playerChunk)
@@ -91,7 +96,8 @@ public class ChunkManager : MonoBehaviour
 
     void SpawnQueuedChunks()
     {
-        int count = Mathf.Max(1, chunksPerFrame);
+        // Limit to 1 chunk per frame to prevent startup crashes
+        int count = 1;
 
         for (int i = 0; i < count && pendingChunks.Count > 0; i++)
         {

@@ -12,6 +12,8 @@ public class Chunk : MonoBehaviour
 
     Mesh mesh;
 
+    bool hasBuilt = false;
+
     List<Vector3> vertices = new();
     List<Vector2> uvs = new();
     List<int> grassTopTriangles = new();
@@ -55,6 +57,13 @@ public class Chunk : MonoBehaviour
             return;
         }
 
+        // Prevent unnecessary rebuilds - only build if this is the first time
+        if (hasBuilt)
+        {
+            Debug.LogWarning($"[Chunk] Skipping rebuild for already-built chunk at ({cx}, {cy}).");
+            return;
+        }
+
         vertices.Clear();
         uvs.Clear();
         grassTopTriangles.Clear();
@@ -66,12 +75,20 @@ public class Chunk : MonoBehaviour
         fadedDirtTriangles.Clear();
         fadedStoneTriangles.Clear();
 
-        ApplyBlockMaterials(blockDatabase);
-
         int startX = cx * SIZE;
         int startZ = cy * SIZE;
 
         BuildBlockMesh(world, startX, startZ);
+
+        // Only rebuild mesh if there's actual data to prevent unnecessary allocations
+        if (vertices.Count == 0)
+        {
+            mesh.Clear();
+            hasBuilt = true;
+            return;
+        }
+
+        ApplyBlockMaterials(blockDatabase);
 
         mesh.Clear();
         mesh.vertices = vertices.ToArray();
@@ -88,6 +105,7 @@ public class Chunk : MonoBehaviour
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
+        hasBuilt = true;
     }
 
     void ApplyBlockMaterials(BlockDatabase blockDatabase)
@@ -104,7 +122,8 @@ public class Chunk : MonoBehaviour
         dirt = dirt != null ? dirt : WorldUtils.CreateFallbackMaterial("Dirt", new Color(0.45f, 0.25f, 0.12f));
         stone = stone != null ? stone : WorldUtils.CreateFallbackMaterial("Stone", Color.gray);
 
-        mr.sharedMaterials = new Material[]
+        // Only create new material array if materials have changed to prevent memory churn
+        Material[] newMaterials = new Material[]
         {
             grassTop,
             grassSide,
@@ -115,6 +134,23 @@ public class Chunk : MonoBehaviour
             CreateTransparentMaterial(dirt),
             CreateTransparentMaterial(stone)
         };
+
+        // Check if materials actually changed before reassigning
+        Material[] currentMaterials = mr.sharedMaterials;
+        if (currentMaterials == null || currentMaterials.Length != newMaterials.Length)
+        {
+            mr.sharedMaterials = newMaterials;
+            return;
+        }
+
+        for (int i = 0; i < newMaterials.Length; i++)
+        {
+            if (currentMaterials[i] != newMaterials[i])
+            {
+                mr.sharedMaterials = newMaterials;
+                return;
+            }
+        }
     }
 
     Material CreateTransparentMaterial(Material source)

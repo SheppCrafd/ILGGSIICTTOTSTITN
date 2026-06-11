@@ -84,7 +84,10 @@ public class Player : MonoBehaviour
         x = Mathf.Clamp(x, 0, world.size - 1);
         y = Mathf.Clamp(y, 0, world.size - 1);
 
-        UpdateVisibilityMask();
+        // Throttle visibility mask updates to every 5 frames to prevent memory leak
+        if (Time.frameCount % 5 == 0)
+            UpdateVisibilityMask();
+
         ResolveBlockedHorizontalMovement(previousX, previousY);
         ApplyGravity(dt, Input.GetKeyDown(KeyCode.Space));
         HandleInventoryInput();
@@ -218,6 +221,11 @@ public class Player : MonoBehaviour
         if (!TryGetMouseBlockTarget(out Vector3Int targetBlock, out _))
             return;
 
+        // Only allow breaking blocks with 50% opacity or more
+        float opacity = BlockVisibilityMask.Opacity(targetBlock.x, targetBlock.y, targetBlock.z);
+        if (opacity < 0.5f)
+            return;
+
         if (!world.TryBreakBlock(targetBlock.x, targetBlock.y, targetBlock.z, out BlockType blockType, out Vector3 dropPosition))
             return;
 
@@ -238,6 +246,11 @@ public class Player : MonoBehaviour
             return;
 
         if (placeBlock.y <= Mathf.FloorToInt(verticalPosition) && placeBlock.x == Mathf.FloorToInt(x) && placeBlock.z == Mathf.FloorToInt(y))
+            return;
+
+        // Only allow placing on blocks with 50% opacity or more
+        float opacity = BlockVisibilityMask.Opacity(placeBlock.x, placeBlock.y, placeBlock.z);
+        if (opacity < 0.5f)
             return;
 
         if (!world.TryPlaceBlock(placeBlock.x, placeBlock.y, placeBlock.z, selected.type))
@@ -287,9 +300,6 @@ public class Player : MonoBehaviour
 
                 continue;
             }
-
-            if (opacity < 0.5f)
-                continue;
 
             targetBlock = block;
             placeBlock = hasPlaceBlock ? lastAirLikeBlock : block + Vector3Int.up;

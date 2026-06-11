@@ -154,7 +154,7 @@ MonoBehaviour:
   x: 16
   y: 16
   z: 0
-  speed: 3
+  speed: 2
   sprintMultiplier: 1.7
   crouchMultiplier: 0.5
   jumpHeight: 1
@@ -829,7 +829,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GameScripts::DroppedBlockItem
   type: 0
-  blockDatabase: {fileID: 1087261375}
+  blockDatabase: {fileID: 0}
   amount: 1
   pickupRadius: 1.25
   pickupDelay: 0.25

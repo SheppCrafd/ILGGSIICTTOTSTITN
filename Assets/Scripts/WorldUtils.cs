@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class WorldUtils
 {
     public const int DirtDepth = 3;
+
+    private static readonly Dictionary<string, Material> fallbackMaterialCache = new Dictionary<string, Material>();
 
     public static bool IsInBounds(int x, int z, int worldSize)
     {
@@ -93,6 +96,11 @@ public static class WorldUtils
 
     public static Material CreateFallbackMaterial(string name, Color color)
     {
+        string cacheKey = $"{name}_{color.r}_{color.g}_{color.b}";
+
+        if (fallbackMaterialCache.TryGetValue(cacheKey, out Material cachedMaterial))
+            return cachedMaterial;
+
         Shader shader = Shader.Find("Standard");
         if (shader == null)
         {
@@ -102,6 +110,7 @@ public static class WorldUtils
         Material material = new Material(shader);
         material.name = name;
         material.color = color;
+        fallbackMaterialCache[cacheKey] = material;
         return material;
     }
 }

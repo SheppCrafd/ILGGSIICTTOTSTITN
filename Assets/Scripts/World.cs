@@ -3,13 +3,15 @@ using UnityEngine;
 
 public class World : MonoBehaviour
 {
-    public int size = 128;
+    public int size = 64;
     public int height = 40;
 
     public WorldGenerator gen;
 
+    private const int MaxCacheSize = 64;
     private Dictionary<Vector2Int, BlockType[]> cache =
         new Dictionary<Vector2Int, BlockType[]>();
+    private LinkedList<Vector2Int> cacheAccessOrder = new LinkedList<Vector2Int>();
     private Dictionary<Vector2Int, byte[]> compactedChunkCache =
         new Dictionary<Vector2Int, byte[]>();
 #if UNITY_EDITOR
@@ -19,6 +21,10 @@ public class World : MonoBehaviour
 
     void Awake()
     {
+        // Clear cache on launch
+        cache.Clear();
+        cacheAccessOrder.Clear();
+
         // SAFETY: never allow null generator
         if (gen == null)
         {
@@ -69,7 +75,21 @@ public class World : MonoBehaviour
                 col = gen.Column(x, y, height);
 
             cache[key] = col;
+            cacheAccessOrder.AddFirst(key);
 
+            // LRU eviction: remove least recently used if cache exceeds max size
+            if (cache.Count > MaxCacheSize)
+            {
+                Vector2Int lruKey = cacheAccessOrder.Last.Value;
+                cacheAccessOrder.RemoveLast();
+                cache.Remove(lruKey);
+            }
+        }
+        else
+        {
+            // Move to front of access order (most recently used)
+            cacheAccessOrder.Remove(key);
+            cacheAccessOrder.AddFirst(key);
         }
 
         return cache[key];
@@ -171,77 +191,91 @@ public class World : MonoBehaviour
 
     public void CompactChunk(int cx, int cy)
     {
-        Vector2Int chunkKey = new Vector2Int(cx, cy);
-        LogCacheEvent($"[World] Compacting chunk ({cx}, {cy}) into cache.");
+        // DISABLED: Chunk compaction to isolate memory leak source
+        // This was creating large byte arrays and storing them in cache
+        return;
 
-        byte[] compacted = new byte[Chunk.SIZE * Chunk.SIZE * height];
-        int index = 0;
-
-        for (int x = 0; x < Chunk.SIZE; x++)
-        {
-            for (int z = 0; z < Chunk.SIZE; z++)
-            {
-                int worldX = cx * Chunk.SIZE + x;
-                int worldZ = cy * Chunk.SIZE + z;
-                Vector2Int columnKey = new Vector2Int(worldX, worldZ);
-                BlockType[] col;
-
-                if (!WorldUtils.IsInBounds(worldX, worldZ, size))
-                    col = EmptyColumn();
-                else if (!cache.TryGetValue(columnKey, out col))
-                {
-                    col = TryLoadCompactedColumn(worldX, worldZ);
-
-                    if (col == null)
-                        col = gen.Column(worldX, worldZ, height);
-                }
-
-                for (int y = 0; y < height; y++)
-                    compacted[index++] = (byte)col[y];
-
-                cache.Remove(columnKey);
-            }
-        }
-
-        compactedChunkCache[chunkKey] = compacted;
-#if UNITY_EDITOR
-        loggedCompactedChunkLoads.Remove(chunkKey);
-#endif
-
-        LogCacheEvent($"[World] Cached chunk ({cx}, {cy}). Bytes={compacted.Length}, columnCache={cache.Count}, compactedChunks={compactedChunkCache.Count}.");
+        // Vector2Int chunkKey = new Vector2Int(cx, cy);
+        // LogCacheEvent($"[World] Compacting chunk ({cx}, {cy}) into cache.");
+        //
+        // byte[] compacted = new byte[Chunk.SIZE * Chunk.SIZE * height];
+        // int index = 0;
+        //
+        // for (int x = 0; x < Chunk.SIZE; x++)
+        // {
+        //     for (int z = 0; z < Chunk.SIZE; z++)
+        //     {
+        //         int worldX = cx * Chunk.SIZE + x;
+        //         int worldZ = cy * Chunk.SIZE + z;
+        //         Vector2Int columnKey = new Vector2Int(worldX, worldZ);
+        //         BlockType[] col;
+        //
+        //         if (!WorldUtils.IsInBounds(worldX, worldZ, size))
+        //             col = EmptyColumn();
+        //         else if (!cache.TryGetValue(columnKey, out col))
+        //         {
+        //             col = TryLoadCompactedColumn(worldX, worldZ);
+        //
+        //             if (col == null)
+        //                 col = gen.Column(worldX, worldZ, height);
+        //         }
+        //
+        //         for (int y = 0; y < height; y++)
+        //             compacted[index++] = (byte)col[y];
+        //
+        //         cache.Remove(columnKey);
+        //     }
+        // }
+        //
+        // compactedChunkCache[chunkKey] = compacted;
+        //
+        // // Simple cache limiting - clear entire cache when it gets too large
+        // if (compactedChunkCache.Count > 50)
+        // {
+        //     compactedChunkCache.Clear();
+        // }
+        //
+        // #if UNITY_EDITOR
+        // loggedCompactedChunkLoads.Remove(chunkKey);
+        // #endif
+        //
+        // LogCacheEvent($"[World] Cached chunk ({cx}, {cy}). Bytes={compacted.Length}, columnCache={cache.Count}, compactedChunks={compactedChunkCache.Count}.");
     }
 
     BlockType[] TryLoadCompactedColumn(int x, int z)
     {
-        Vector2Int chunkKey = new Vector2Int(
-            WorldUtils.ToChunkCoord(x),
-            WorldUtils.ToChunkCoord(z)
-        );
+        // DISABLED: Compacted cache to isolate memory leak source
+        return null;
 
-        if (!compactedChunkCache.TryGetValue(chunkKey, out byte[] compacted))
-            return null;
-
-#if UNITY_EDITOR
-        if (loggedCompactedChunkLoads.Add(chunkKey))
-            LogCacheEvent($"[World] Loading chunk ({chunkKey.x}, {chunkKey.y}) from compacted cache.");
-#endif
-
-        int localX = x - chunkKey.x * Chunk.SIZE;
-        int localZ = z - chunkKey.y * Chunk.SIZE;
-        int index = ((localX * Chunk.SIZE) + localZ) * height;
-
-        if (index < 0 || index + height > compacted.Length)
-        {
-            Debug.LogError($"[World] Compacted column index out of range at ({x}, {z}), chunk ({chunkKey.x}, {chunkKey.y}), index={index}, len={compacted.Length}.");
-            return null;
-        }
-
-        BlockType[] col = new BlockType[height];
-
-        for (int y = 0; y < height; y++)
-            col[y] = (BlockType)compacted[index + y];
-
-        return col;
+        // Vector2Int chunkKey = new Vector2Int(
+        //     WorldUtils.ToChunkCoord(x),
+        //     WorldUtils.ToChunkCoord(z)
+        // );
+        //
+        // if (!compactedChunkCache.TryGetValue(chunkKey, out byte[] compacted))
+        //     return null;
+        //
+        // #if UNITY_EDITOR
+        // if (loggedCompactedChunkLoads.Add(chunkKey))
+        //     LogCacheEvent($"[World] Loading chunk ({chunkKey.x}, {chunkKey.y}) from compacted cache.");
+        // #endif
+        //
+        // int localX = x - chunkKey.x * Chunk.SIZE;
+        // int localZ = z - chunkKey.y * Chunk.SIZE;
+        // int index = ((localX * Chunk.SIZE) + localZ) * height;
+        //
+        // if (index < 0 || index + height > compacted.Length)
+        // {
+        //     Debug.LogError($"[World] Compacted column index out of range at ({x}, {z}), chunk ({chunkKey.x}, {chunkKey.y}), index={index}, len={compacted.Length}.");
+        //     return null;
+        // }
+        //
+        // BlockType[] col = new BlockType[height];
+        //
+        // for (int y = 0; y < height; y++)
+        //     col[y] = (BlockType)compacted[index + y];
+        //
+        // return col;
     }
 
     void UpdateCompactedColumn(int x, int z, int y, BlockType blockType)

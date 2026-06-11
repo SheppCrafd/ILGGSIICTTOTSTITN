@@ -154,18 +154,18 @@ MonoBehaviour:
   x: 16
   y: 16
   z: 0
-  speed: 3
+  speed: 5
   sprintMultiplier: 1.7
   crouchMultiplier: 0.5
-  jumpHeight: 1
+  jumpHeight: 2
   gravity: -20
   terminalVelocity: -50
   hotbarSlots: 9
   inventorySlots: 27
   pickupRadius: 1.25
   visibilityPrismWidth: 10
-  mouseInteractionRange: 5
-  viewCamera: {fileID: 1375239120}
+  mouseInteractionRange: 80
+  viewCamera: {fileID: 0}
 --- !u!4 &385263824
 Transform:
   m_ObjectHideFlags: 0
@@ -520,7 +520,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 596bfdf206de5b34aa04c04b8b61ee4a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
-  player: {fileID: 385263823}
+  player: {fileID: 0}
   offset: {x: -20, y: 20, z: -20}
 --- !u!1 &1501725499
 GameObject:
@@ -829,7 +829,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GameScripts::DroppedBlockItem
   type: 0
-  blockDatabase: {fileID: 1087261375}
+  blockDatabase: {fileID: 0}
   amount: 1
   pickupRadius: 1.25
   pickupDelay: 0.25

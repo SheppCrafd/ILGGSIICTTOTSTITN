@@ -6,7 +6,7 @@ public static class BlockVisibilityMask
     const float FadedOpacity = 0.5f;
     const float TransparentOpacity = 0f;
     const float OpaqueOpacity = 1f;
-    const float RebuildPositionStep = 0.25f;
+    const float RebuildPositionStep = 5.0f;
     const float RayStep = 0.35f;
 
     static readonly HashSet<Vector3Int> transparentBlocks = new();
@@ -97,12 +97,19 @@ public static class BlockVisibilityMask
         int minZ = Mathf.Max(0, Mathf.FloorToInt(min.z));
         int maxZ = Mathf.Min(world.size - 1, Mathf.CeilToInt(max.z));
 
+        // Limit the number of blocks processed to prevent memory explosion
+        int maxBlocksToProcess = 5000;
+        int blocksProcessed = 0;
+
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
             {
                 for (int z = minZ; z <= maxZ; z++)
                 {
+                    if (blocksProcessed >= maxBlocksToProcess)
+                        return;
+
                     if (world.GetBlock(x, y, z) == BlockType.Air)
                         continue;
 
@@ -114,6 +121,7 @@ public static class BlockVisibilityMask
                     var block = new Vector3Int(x, y, z);
                     transparentBlocks.Add(block);
                     prismBlocks.Add(block);
+                    blocksProcessed++;
                 }
             }
         }
