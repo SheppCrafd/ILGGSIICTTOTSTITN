@@ -49,6 +49,8 @@ public class Player : MonoBehaviour
         }
 
         float dt = Time.deltaTime;
+        float previousX = x;
+        float previousY = y;
 
         if (Input.GetKey(KeyCode.W)) y += speed * dt;
         if (Input.GetKey(KeyCode.S)) y -= speed * dt;
@@ -58,13 +60,27 @@ public class Player : MonoBehaviour
         x = Mathf.Clamp(x, 0, world.size - 1);
         y = Mathf.Clamp(y, 0, world.size - 1);
 
+        ResolveAirborneHorizontalCollision(previousX, previousY);
         ApplyGravity(dt, Input.GetKeyDown(KeyCode.Space));
         UpdatePosition();
+    }
+
+    void ResolveAirborneHorizontalCollision(float previousX, float previousY)
+    {
+        if (isGrounded || !hasVerticalPosition)
+            return;
+
+        if (GroundHeight() <= verticalPosition)
+            return;
+
+        x = previousX;
+        y = previousY;
     }
 
     void ApplyGravity(float dt, bool jumpPressed)
     {
         float groundHeight = GroundHeight();
+        bool wasGrounded = isGrounded || !hasVerticalPosition;
 
         if (!hasVerticalPosition)
         {
@@ -73,7 +89,7 @@ public class Player : MonoBehaviour
             hasVerticalPosition = true;
         }
 
-        isGrounded = verticalPosition <= groundHeight;
+        isGrounded = wasGrounded;
 
         if (isGrounded)
         {
