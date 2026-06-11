@@ -3,6 +3,7 @@ using UnityEngine;
 public class DroppedBlockItem : MonoBehaviour
 {
     public BlockType type;
+    public BlockDatabase blockDatabase;
     public int amount = 1;
     public float pickupRadius = 1.25f;
     public float pickupDelay = 0.25f;
@@ -58,6 +59,13 @@ public class DroppedBlockItem : MonoBehaviour
         if (renderer == null)
             return;
 
-        renderer.sharedMaterial = WorldUtils.CreateFallbackMaterial($"{type} Drop", WorldUtils.BlockColor(type));
+        Material material = WorldUtils.FindBlockMaterial(blockDatabase, type, "Top");
+
+        if (material == null)
+            material = WorldUtils.FindBlockMaterial(blockDatabase, type, null);
+
+        renderer.sharedMaterial = material != null ?
+            material :
+            WorldUtils.CreateFallbackMaterial($"{type} Drop", WorldUtils.BlockColor(type));
     }
 }

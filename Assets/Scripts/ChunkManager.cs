@@ -16,6 +16,7 @@ public class ChunkManager : MonoBehaviour
     HashSet<Vector2Int> queuedChunks = new();
     List<Vector2Int> despawnBuffer = new();
     Vector2Int lastPlayerChunk = new Vector2Int(int.MinValue, int.MinValue);
+    int lastVisibilityVersion = -1;
 
     void Update()
     {
@@ -46,6 +47,14 @@ public class ChunkManager : MonoBehaviour
             queuedChunks.Clear();
             DespawnDistantChunks(playerChunk);
             QueueVisibleChunks(playerChunk);
+        }
+
+        UpdateVisibilityMask();
+
+        if (lastVisibilityVersion != BlockVisibilityMask.Version)
+        {
+            lastVisibilityVersion = BlockVisibilityMask.Version;
+            RefreshActiveChunks();
         }
 
         SpawnQueuedChunks();
@@ -127,6 +136,25 @@ public class ChunkManager : MonoBehaviour
         RefreshChunk(WorldUtils.ToChunkCoord(worldX + 1), WorldUtils.ToChunkCoord(worldZ));
         RefreshChunk(WorldUtils.ToChunkCoord(worldX), WorldUtils.ToChunkCoord(worldZ - 1));
         RefreshChunk(WorldUtils.ToChunkCoord(worldX), WorldUtils.ToChunkCoord(worldZ + 1));
+    }
+
+    void UpdateVisibilityMask()
+    {
+        Camera camera = Camera.main;
+
+        if (camera == null)
+            camera = FindAnyObjectByType<Camera>();
+
+        if (camera == null)
+            return;
+
+        BlockVisibilityMask.Update(world, player.CurrentWorldPosition(), camera.transform.position, player.visibilityPrismWidth);
+    }
+
+    void RefreshActiveChunks()
+    {
+        foreach (var chunk in chunks)
+            chunk.Value.Build(world, chunk.Key.x, chunk.Key.y, blockDatabase);
     }
 
     void RefreshChunk(int cx, int cy)
