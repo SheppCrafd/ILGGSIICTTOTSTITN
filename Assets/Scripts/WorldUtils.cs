@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class WorldUtils
 {
     public const int DirtDepth = 3;
+
+    private static readonly Dictionary<string, Material> fallbackMaterialCache = new Dictionary<string, Material>();
 
     public static bool IsInBounds(int x, int z, int worldSize)
     {
@@ -43,8 +46,61 @@ public static class WorldUtils
         return Mathf.FloorToInt(worldCoord / Chunk.SIZE);
     }
 
+    public static Color BlockColor(BlockType type)
+    {
+        switch (type)
+        {
+            case BlockType.Grass:
+                return Color.green;
+
+            case BlockType.Dirt:
+                return new Color(0.45f, 0.25f, 0.12f);
+
+            case BlockType.Stone:
+                return Color.gray;
+
+            default:
+                return Color.white;
+        }
+    }
+
+    public static Material FindBlockMaterial(BlockDatabase blockDatabase, BlockType type, string childName)
+    {
+        if (blockDatabase == null)
+            return null;
+
+        GameObject prefab = blockDatabase.Get(type);
+
+        if (prefab == null)
+            return null;
+
+        MeshRenderer[] renderers = prefab.GetComponentsInChildren<MeshRenderer>(true);
+
+        if (!string.IsNullOrEmpty(childName))
+        {
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i].gameObject.name == childName && renderers[i].sharedMaterial != null)
+                    return renderers[i].sharedMaterial;
+            }
+        }
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i].sharedMaterial != null)
+                return renderers[i].sharedMaterial;
+        }
+
+        return null;
+    }
+
     public static Material CreateFallbackMaterial(string name, Color color)
     {
+        string cacheKey = $"{name}_{color.r}_{color.g}_{color.b}";
+
+        if (fallbackMaterialCache.TryGetValue(cacheKey, out Material cachedMaterial))
+            return cachedMaterial;
+
         Shader shader = Shader.Find("Standard");
         if (shader == null)
         {
@@ -54,6 +110,7 @@ public static class WorldUtils
         Material material = new Material(shader);
         material.name = name;
         material.color = color;
+        fallbackMaterialCache[cacheKey] = material;
         return material;
     }
 }

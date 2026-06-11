@@ -8,7 +8,7 @@ public class ChunkManager : MonoBehaviour
     public Chunk chunkPrefab;
     public BlockDatabase blockDatabase;
 
-    public int renderDistance = 4;
+    public int renderDistance = 2;
     public int chunksPerFrame = 1;
 
     Dictionary<Vector2Int, Chunk> chunks = new();
@@ -16,6 +16,7 @@ public class ChunkManager : MonoBehaviour
     HashSet<Vector2Int> queuedChunks = new();
     List<Vector2Int> despawnBuffer = new();
     Vector2Int lastPlayerChunk = new Vector2Int(int.MinValue, int.MinValue);
+    int lastVisibilityVersion = -1;
 
     void Update()
     {
@@ -49,6 +50,19 @@ public class ChunkManager : MonoBehaviour
         }
 
         SpawnQueuedChunks();
+
+        // DISABLED: Visibility-based chunk rebuilding was causing massive memory leak
+        // Chunks only rebuild when explicitly needed (e.g., block placement/destruction)
+        // if (pendingChunks.Count == 0 && Time.frameCount % 10 == 0)
+        // {
+        //     UpdateVisibilityMask();
+        //
+        //     if (lastVisibilityVersion != BlockVisibilityMask.Version)
+        //     {
+        //         lastVisibilityVersion = BlockVisibilityMask.Version;
+        //         RefreshActiveChunks();
+        //     }
+        // }
     }
 
     void QueueVisibleChunks(Vector2Int playerChunk)
@@ -82,7 +96,8 @@ public class ChunkManager : MonoBehaviour
 
     void SpawnQueuedChunks()
     {
-        int count = Mathf.Max(1, chunksPerFrame);
+        // Limit to 1 chunk per frame to prevent startup crashes
+        int count = 1;
 
         for (int i = 0; i < count && pendingChunks.Count > 0; i++)
         {
@@ -118,6 +133,44 @@ public class ChunkManager : MonoBehaviour
     bool IsInsideRenderDistance(Vector2Int coord, Vector2Int playerChunk)
     {
         return IsInsideRenderDistance(coord, playerChunk, renderDistance);
+    }
+
+    public void RefreshColumn(int worldX, int worldZ)
+    {
+        RefreshChunk(WorldUtils.ToChunkCoord(worldX), WorldUtils.ToChunkCoord(worldZ));
+        RefreshChunk(WorldUtils.ToChunkCoord(worldX - 1), WorldUtils.ToChunkCoord(worldZ));
+        RefreshChunk(WorldUtils.ToChunkCoord(worldX + 1), WorldUtils.ToChunkCoord(worldZ));
+        RefreshChunk(WorldUtils.ToChunkCoord(worldX), WorldUtils.ToChunkCoord(worldZ - 1));
+        RefreshChunk(WorldUtils.ToChunkCoord(worldX), WorldUtils.ToChunkCoord(worldZ + 1));
+    }
+
+    void UpdateVisibilityMask()
+    {
+        Camera camera = Camera.main;
+
+        if (camera == null)
+            camera = FindAnyObjectByType<Camera>();
+
+        if (camera == null)
+            return;
+
+        BlockVisibilityMask.Update(world, player.CurrentWorldPosition(), camera.transform.position, player.visibilityPrismWidth);
+    }
+
+    void RefreshActiveChunks()
+    {
+        foreach (var chunk in chunks)
+            chunk.Value.Build(world, chunk.Key.x, chunk.Key.y, blockDatabase);
+    }
+
+    void RefreshChunk(int cx, int cy)
+    {
+        Vector2Int coord = new Vector2Int(cx, cy);
+
+        if (!chunks.TryGetValue(coord, out Chunk chunk))
+            return;
+
+        chunk.Build(world, coord.x, coord.y, blockDatabase);
     }
 
     void DespawnDistantChunks(Vector2Int playerChunk)

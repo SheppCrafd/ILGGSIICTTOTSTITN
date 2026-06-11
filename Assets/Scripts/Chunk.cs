@@ -12,12 +12,19 @@ public class Chunk : MonoBehaviour
 
     Mesh mesh;
 
+    bool hasBuilt = false;
+
     List<Vector3> vertices = new();
     List<Vector2> uvs = new();
     List<int> grassTopTriangles = new();
     List<int> grassSideTriangles = new();
     List<int> dirtTriangles = new();
     List<int> stoneTriangles = new();
+    List<int> fadedGrassTopTriangles = new();
+    List<int> fadedGrassSideTriangles = new();
+    List<int> fadedDirtTriangles = new();
+    List<int> fadedStoneTriangles = new();
+    static readonly Dictionary<Material, Material> transparentMaterials = new();
 
     void Awake()
     {
@@ -50,84 +57,126 @@ public class Chunk : MonoBehaviour
             return;
         }
 
+        // Prevent unnecessary rebuilds - only build if this is the first time
+        if (hasBuilt)
+        {
+            Debug.LogWarning($"[Chunk] Skipping rebuild for already-built chunk at ({cx}, {cy}).");
+            return;
+        }
+
         vertices.Clear();
         uvs.Clear();
         grassTopTriangles.Clear();
         grassSideTriangles.Clear();
         dirtTriangles.Clear();
         stoneTriangles.Clear();
-
-        ApplyBlockMaterials(blockDatabase);
+        fadedGrassTopTriangles.Clear();
+        fadedGrassSideTriangles.Clear();
+        fadedDirtTriangles.Clear();
+        fadedStoneTriangles.Clear();
 
         int startX = cx * SIZE;
         int startZ = cy * SIZE;
 
-        BuildHeightMapMesh(world, startX, startZ);
+        BuildBlockMesh(world, startX, startZ);
+
+        // Only rebuild mesh if there's actual data to prevent unnecessary allocations
+        if (vertices.Count == 0)
+        {
+            mesh.Clear();
+            hasBuilt = true;
+            return;
+        }
+
+        ApplyBlockMaterials(blockDatabase);
 
         mesh.Clear();
         mesh.vertices = vertices.ToArray();
         mesh.uv = uvs.ToArray();
-        mesh.subMeshCount = 4;
+        mesh.subMeshCount = 8;
         mesh.SetTriangles(grassTopTriangles, 0);
         mesh.SetTriangles(grassSideTriangles, 1);
         mesh.SetTriangles(dirtTriangles, 2);
         mesh.SetTriangles(stoneTriangles, 3);
+        mesh.SetTriangles(fadedGrassTopTriangles, 4);
+        mesh.SetTriangles(fadedGrassSideTriangles, 5);
+        mesh.SetTriangles(fadedDirtTriangles, 6);
+        mesh.SetTriangles(fadedStoneTriangles, 7);
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
+        hasBuilt = true;
     }
 
     void ApplyBlockMaterials(BlockDatabase blockDatabase)
     {
         var mr = GetComponent<MeshRenderer>();
 
-        Material grassTop = FindMaterial(blockDatabase, BlockType.Grass, "Top");
-        Material grassSide = FindMaterial(blockDatabase, BlockType.Grass, "North");
-        Material dirt = FindMaterial(blockDatabase, BlockType.Dirt, null);
-        Material stone = FindMaterial(blockDatabase, BlockType.Stone, null);
+        Material grassTop = WorldUtils.FindBlockMaterial(blockDatabase, BlockType.Grass, "Top");
+        Material grassSide = WorldUtils.FindBlockMaterial(blockDatabase, BlockType.Grass, "North");
+        Material dirt = WorldUtils.FindBlockMaterial(blockDatabase, BlockType.Dirt, null);
+        Material stone = WorldUtils.FindBlockMaterial(blockDatabase, BlockType.Stone, null);
 
-        mr.sharedMaterials = new Material[]
+        grassTop = grassTop != null ? grassTop : WorldUtils.CreateFallbackMaterial("Grass Top", Color.green);
+        grassSide = grassSide != null ? grassSide : WorldUtils.CreateFallbackMaterial("Grass Side", new Color(0.45f, 0.75f, 0.25f));
+        dirt = dirt != null ? dirt : WorldUtils.CreateFallbackMaterial("Dirt", new Color(0.45f, 0.25f, 0.12f));
+        stone = stone != null ? stone : WorldUtils.CreateFallbackMaterial("Stone", Color.gray);
+
+        // Only create new material array if materials have changed to prevent memory churn
+        Material[] newMaterials = new Material[]
         {
-            grassTop != null ? grassTop : WorldUtils.CreateFallbackMaterial("Grass Top", Color.green),
-            grassSide != null ? grassSide : WorldUtils.CreateFallbackMaterial("Grass Side", new Color(0.45f, 0.75f, 0.25f)),
-            dirt != null ? dirt : WorldUtils.CreateFallbackMaterial("Dirt", new Color(0.45f, 0.25f, 0.12f)),
-            stone != null ? stone : WorldUtils.CreateFallbackMaterial("Stone", Color.gray)
+            grassTop,
+            grassSide,
+            dirt,
+            stone,
+            CreateTransparentMaterial(grassTop),
+            CreateTransparentMaterial(grassSide),
+            CreateTransparentMaterial(dirt),
+            CreateTransparentMaterial(stone)
         };
-    }
 
-    Material FindMaterial(BlockDatabase blockDatabase, BlockType type, string childName)
-    {
-        if (blockDatabase == null)
-            return null;
-
-        GameObject prefab = blockDatabase.Get(type);
-        if (prefab == null)
-            return null;
-
-        MeshRenderer[] renderers = prefab.GetComponentsInChildren<MeshRenderer>(true);
-
-        if (!string.IsNullOrEmpty(childName))
+        // Check if materials actually changed before reassigning
+        Material[] currentMaterials = mr.sharedMaterials;
+        if (currentMaterials == null || currentMaterials.Length != newMaterials.Length)
         {
-            for (int i = 0; i < renderers.Length; i++)
+            mr.sharedMaterials = newMaterials;
+            return;
+        }
+
+        for (int i = 0; i < newMaterials.Length; i++)
+        {
+            if (currentMaterials[i] != newMaterials[i])
             {
-                if (renderers[i].gameObject.name == childName && renderers[i].sharedMaterial != null)
-                    return renderers[i].sharedMaterial;
+                mr.sharedMaterials = newMaterials;
+                return;
             }
         }
-
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            if (renderers[i].sharedMaterial != null)
-                return renderers[i].sharedMaterial;
-        }
-
-        return null;
     }
 
-    void BuildHeightMapMesh(World world, int startX, int startZ)
+    Material CreateTransparentMaterial(Material source)
     {
-        int[,] heights = new int[SIZE, SIZE];
+        if (transparentMaterials.TryGetValue(source, out Material cachedMaterial))
+            return cachedMaterial;
 
+        Material material = new Material(source);
+        material.name = $"{source.name} 50%";
+        Color color = material.color;
+        color.a = 0.5f;
+        material.color = color;
+        material.SetFloat("_Mode", 3f);
+        material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        material.SetInt("_ZWrite", 0);
+        material.DisableKeyword("_ALPHATEST_ON");
+        material.EnableKeyword("_ALPHABLEND_ON");
+        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        material.renderQueue = 3000;
+        transparentMaterials[source] = material;
+        return material;
+    }
+
+    void BuildBlockMesh(World world, int startX, int startZ)
+    {
         for (int x = 0; x < SIZE; x++)
         {
             for (int z = 0; z < SIZE; z++)
@@ -138,62 +187,84 @@ public class Chunk : MonoBehaviour
                 if (!WorldUtils.IsInBounds(worldX, worldZ, world.size))
                     continue;
 
-                heights[x, z] = WorldUtils.ColumnHeight(world.Get(worldX, worldZ));
-            }
-        }
+                BlockType[] col = world.Get(worldX, worldZ);
 
-        for (int x = 0; x < SIZE; x++)
-        {
-            for (int z = 0; z < SIZE; z++)
-            {
-                int h = heights[x, z];
-
-                if (h <= 0)
-                    continue;
-
-                AddTopFace(x, h, z);
-                AddSideFaces(world, startX, startZ, x, z, h, 1, 0);
-                AddSideFaces(world, startX, startZ, x, z, h, -1, 0);
-                AddSideFaces(world, startX, startZ, x, z, h, 0, 1);
-                AddSideFaces(world, startX, startZ, x, z, h, 0, -1);
+                for (int y = 0; y < world.height; y++)
+                    AddVisibleBlock(world, startX, startZ, x, y, z, col[y]);
             }
         }
     }
 
     internal static int ColumnHeight(BlockType[] col) => WorldUtils.ColumnHeight(col);
 
-    void AddSideFaces(World world, int startX, int startZ, int x, int z, int height, int dx, int dz)
+    void AddVisibleBlock(World world, int startX, int startZ, int x, int y, int z, BlockType type)
     {
-        int neighborHeight = GetColumnHeight(world, startX + x + dx, startZ + z + dz);
+        if (type == BlockType.Air)
+            return;
 
-        for (int y = neighborHeight; y < height; y++)
-            AddSideFace(x, y, z, dx, dz, WorldUtils.BlockTypeAtDepth(height, y));
+        int worldX = startX + x;
+        int worldZ = startZ + z;
+        float opacity = BlockVisibilityMask.Opacity(worldX, y, worldZ);
+
+        if (opacity <= 0f)
+            return;
+
+        if (IsAirLike(world, worldX, y + 1, worldZ))
+            AddTopFace(x, y, z, type, opacity);
+
+        if (IsAirLike(world, worldX, y - 1, worldZ))
+            AddBottomFace(x, y, z, type, opacity);
+
+        if (IsAirLike(world, worldX + 1, y, worldZ))
+            AddSideFace(x, y, z, 1, 0, type, opacity);
+
+        if (IsAirLike(world, worldX - 1, y, worldZ))
+            AddSideFace(x, y, z, -1, 0, type, opacity);
+
+        if (IsAirLike(world, worldX, y, worldZ + 1))
+            AddSideFace(x, y, z, 0, 1, type, opacity);
+
+        if (IsAirLike(world, worldX, y, worldZ - 1))
+            AddSideFace(x, y, z, 0, -1, type, opacity);
     }
 
-    int GetColumnHeight(World world, int worldX, int worldZ)
+    bool IsAirLike(World world, int worldX, int y, int worldZ)
     {
-        if (!WorldUtils.IsInBounds(worldX, worldZ, world.size))
-            return 0;
-
-        return WorldUtils.ColumnHeight(world.Get(worldX, worldZ));
+        return !world.IsInBlockBounds(worldX, y, worldZ) ||
+            world.GetBlock(worldX, y, worldZ) == BlockType.Air ||
+            BlockVisibilityMask.Opacity(worldX, y, worldZ) <= 0f;
     }
 
     internal static BlockType BlockTypeAtDepth(int columnHeight, int y) => WorldUtils.BlockTypeAtDepth(columnHeight, y);
 
-    void AddTopFace(int x, int height, int z)
+    void AddTopFace(int x, int y, int z, BlockType type, float opacity)
     {
         AddQuad(
-            new Vector3(x, height, z),
-            new Vector3(x, height, z + 1),
-            new Vector3(x + 1, height, z + 1),
-            new Vector3(x + 1, height, z),
-            grassTopTriangles,
+            new Vector3(x, y + 1, z),
+            new Vector3(x, y + 1, z + 1),
+            new Vector3(x + 1, y + 1, z + 1),
+            new Vector3(x + 1, y + 1, z),
+            MaterialTriangles(type, true, opacity),
             1f,
             1f
         );
     }
 
-    void AddSideFace(int x, int y, int z, int dx, int dz, BlockType type)
+    void AddBottomFace(int x, int y, int z, BlockType type, float opacity)
+    {
+        AddQuad(
+            new Vector3(x, y, z),
+            new Vector3(x + 1, y, z),
+            new Vector3(x + 1, y, z + 1),
+            new Vector3(x, y, z + 1),
+            MaterialTriangles(type, false, opacity),
+            1f,
+            1f,
+            true
+        );
+    }
+
+    void AddSideFace(int x, int y, int z, int dx, int dz, BlockType type, float opacity)
     {
         if (dx > 0)
         {
@@ -202,7 +273,7 @@ public class Chunk : MonoBehaviour
                 new Vector3(x + 1, y + 1, z),
                 new Vector3(x + 1, y + 1, z + 1),
                 new Vector3(x + 1, y, z + 1),
-                MaterialTriangles(type, false),
+                MaterialTriangles(type, false, opacity),
                 1f,
                 1f
             );
@@ -214,7 +285,7 @@ public class Chunk : MonoBehaviour
                 new Vector3(x, y, z + 1),
                 new Vector3(x, y + 1, z + 1),
                 new Vector3(x, y + 1, z),
-                MaterialTriangles(type, false),
+                MaterialTriangles(type, false, opacity),
                 1f,
                 1f,
                 true
@@ -227,7 +298,7 @@ public class Chunk : MonoBehaviour
                 new Vector3(x + 1, y, z + 1),
                 new Vector3(x + 1, y + 1, z + 1),
                 new Vector3(x, y + 1, z + 1),
-                MaterialTriangles(type, false),
+                MaterialTriangles(type, false, opacity),
                 1f,
                 1f
             );
@@ -239,22 +310,26 @@ public class Chunk : MonoBehaviour
                 new Vector3(x, y + 1, z),
                 new Vector3(x + 1, y + 1, z),
                 new Vector3(x + 1, y, z),
-                MaterialTriangles(type, false),
+                MaterialTriangles(type, false, opacity),
                 1f,
                 1f
             );
         }
     }
 
-    List<int> MaterialTriangles(BlockType type, bool isTop)
+    List<int> MaterialTriangles(BlockType type, bool isTop, float opacity)
     {
+        bool faded = opacity < 1f;
+
         if (type == BlockType.Grass)
-            return isTop ? grassTopTriangles : grassSideTriangles;
+            return faded ?
+                (isTop ? fadedGrassTopTriangles : fadedGrassSideTriangles) :
+                (isTop ? grassTopTriangles : grassSideTriangles);
 
         if (type == BlockType.Dirt)
-            return dirtTriangles;
+            return faded ? fadedDirtTriangles : dirtTriangles;
 
-        return stoneTriangles;
+        return faded ? fadedStoneTriangles : stoneTriangles;
     }
 
     void AddQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, List<int> targetTriangles, float uvWidth, float uvHeight, bool rotateUvsCounterClockwise = false)

@@ -25,10 +25,15 @@ public class GameManager : MonoBehaviour
         world.Init(seed);
 
         player.world = world;
+        player.chunkManager = chunkManager;
+        player.viewCamera = Camera.main;
         player.SpawnAtWorldCenter();
 
         if (chunkManager != null)
+        {
             chunkManager.world = world;
+            chunkManager.player = player;
+        }
         else
             Debug.LogWarning("[GameManager] ChunkManager is not assigned; terrain will not stream.");
 
