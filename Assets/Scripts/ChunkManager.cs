@@ -176,6 +176,40 @@ public class ChunkManager : MonoBehaviour
         LogChunkEvent($"[ChunkManager] Loaded chunk ({coord.x}, {coord.y}). Active={chunks.Count}.");
     }
 
+    // Rebuilds the chunk that contains the given world coordinate (and its immediate neighbors if on a chunk boundary).
+    public void RebuildChunkContaining(int worldX, int worldZ)
+    {
+        Vector2Int chunkKey = new Vector2Int(WorldUtils.ToChunkCoord(worldX), WorldUtils.ToChunkCoord(worldZ));
+
+        if (chunks.TryGetValue(chunkKey, out Chunk c))
+            c.Build(world, chunkKey.x, chunkKey.y, blockDatabase);
+
+        // If the modified column is on a chunk edge, neighboring chunks may need rebuilding too
+        int localX = worldX - chunkKey.x * Chunk.SIZE;
+        int localZ = worldZ - chunkKey.y * Chunk.SIZE;
+
+        if (localX == 0)
+        {
+            var left = new Vector2Int(chunkKey.x - 1, chunkKey.y);
+            if (chunks.TryGetValue(left, out Chunk c2)) c2.Build(world, left.x, left.y, blockDatabase);
+        }
+        if (localX == Chunk.SIZE - 1)
+        {
+            var right = new Vector2Int(chunkKey.x + 1, chunkKey.y);
+            if (chunks.TryGetValue(right, out Chunk c2)) c2.Build(world, right.x, right.y, blockDatabase);
+        }
+        if (localZ == 0)
+        {
+            var back = new Vector2Int(chunkKey.x, chunkKey.y - 1);
+            if (chunks.TryGetValue(back, out Chunk c2)) c2.Build(world, back.x, back.y, blockDatabase);
+        }
+        if (localZ == Chunk.SIZE - 1)
+        {
+            var front = new Vector2Int(chunkKey.x, chunkKey.y + 1);
+            if (chunks.TryGetValue(front, out Chunk c2)) c2.Build(world, front.x, front.y, blockDatabase);
+        }
+    }
+
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
     void LogChunkEvent(string message)
     {

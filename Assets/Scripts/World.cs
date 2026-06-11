@@ -75,6 +75,64 @@ public class World : MonoBehaviour
         return cache[key];
     }
 
+    // Sets a specific block in a column. Ensures the column is cached and invalidates any compacted chunk cache
+    public void SetBlockType(int x, int z, int y, BlockType type)
+    {
+        if (y < 0 || y >= height)
+            return;
+
+        Vector2Int key = new Vector2Int(x, z);
+        var col = Get(x, z);
+        col[y] = type;
+        cache[key] = col;
+
+        // Invalidate compacted chunk cache for this column's chunk so future loads use updated data
+        Vector2Int chunkKey = new Vector2Int(ToChunkCoord(x), ToChunkCoord(z));
+        if (compactedChunkCache.ContainsKey(chunkKey))
+            compactedChunkCache.Remove(chunkKey);
+    }
+
+    // Removes (sets to Air) the topmost block in the column at (x,z). Returns true if a block was removed.
+    public bool RemoveTopBlock(int x, int z)
+    {
+        Vector2Int key = new Vector2Int(x, z);
+        var col = Get(x, z);
+        int h = WorldUtils.ColumnHeight(col);
+        if (h <= 0)
+            return false;
+
+        col[h - 1] = BlockType.Air;
+        cache[key] = col;
+
+        Vector2Int chunkKey = new Vector2Int(ToChunkCoord(x), ToChunkCoord(z));
+        if (compactedChunkCache.ContainsKey(chunkKey))
+            compactedChunkCache.Remove(chunkKey);
+
+        return true;
+    }
+
+    // Places a block on top of the column at (x,z) if there is room. Returns true if placed.
+    public bool PlaceTopBlock(int x, int z, BlockType type)
+    {
+        if (!WorldUtils.IsInBounds(x, z, size))
+            return false;
+
+        Vector2Int key = new Vector2Int(x, z);
+        var col = Get(x, z);
+        int h = WorldUtils.ColumnHeight(col);
+        if (h >= height)
+            return false;
+
+        col[h] = type;
+        cache[key] = col;
+
+        Vector2Int chunkKey = new Vector2Int(ToChunkCoord(x), ToChunkCoord(z));
+        if (compactedChunkCache.ContainsKey(chunkKey))
+            compactedChunkCache.Remove(chunkKey);
+
+        return true;
+    }
+
     public void CompactChunk(int cx, int cy)
     {
         Vector2Int chunkKey = new Vector2Int(cx, cy);
