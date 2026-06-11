@@ -25,6 +25,7 @@ public class GameManager : MonoBehaviour
         world.Init(seed);
 
         player.world = world;
+        player.chunkManager = chunkManager;
         player.SpawnAtWorldCenter();
 
         if (chunkManager != null)

@@ -43,6 +43,24 @@ public static class WorldUtils
         return Mathf.FloorToInt(worldCoord / Chunk.SIZE);
     }
 
+    public static Color BlockColor(BlockType type)
+    {
+        switch (type)
+        {
+            case BlockType.Grass:
+                return Color.green;
+
+            case BlockType.Dirt:
+                return new Color(0.45f, 0.25f, 0.12f);
+
+            case BlockType.Stone:
+                return Color.gray;
+
+            default:
+                return Color.white;
+        }
+    }
+
     public static Material CreateFallbackMaterial(string name, Color color)
     {
         Shader shader = Shader.Find("Standard");

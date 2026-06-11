@@ -151,23 +151,30 @@ public class Chunk : MonoBehaviour
                 if (h <= 0)
                     continue;
 
-                AddTopFace(x, h, z);
-                AddSideFaces(world, startX, startZ, x, z, h, 1, 0);
-                AddSideFaces(world, startX, startZ, x, z, h, -1, 0);
-                AddSideFaces(world, startX, startZ, x, z, h, 0, 1);
-                AddSideFaces(world, startX, startZ, x, z, h, 0, -1);
+                BlockType[] col = world.Get(startX + x, startZ + z);
+
+                AddTopFace(x, h, z, col[h - 1]);
+                AddSideFaces(world, startX, startZ, x, z, h, 1, 0, col);
+                AddSideFaces(world, startX, startZ, x, z, h, -1, 0, col);
+                AddSideFaces(world, startX, startZ, x, z, h, 0, 1, col);
+                AddSideFaces(world, startX, startZ, x, z, h, 0, -1, col);
             }
         }
     }
 
     internal static int ColumnHeight(BlockType[] col) => WorldUtils.ColumnHeight(col);
 
-    void AddSideFaces(World world, int startX, int startZ, int x, int z, int height, int dx, int dz)
+    void AddSideFaces(World world, int startX, int startZ, int x, int z, int height, int dx, int dz, BlockType[] col)
     {
         int neighborHeight = GetColumnHeight(world, startX + x + dx, startZ + z + dz);
 
         for (int y = neighborHeight; y < height; y++)
-            AddSideFace(x, y, z, dx, dz, WorldUtils.BlockTypeAtDepth(height, y));
+        {
+            BlockType type = col[y];
+
+            if (type != BlockType.Air)
+                AddSideFace(x, y, z, dx, dz, type);
+        }
     }
 
     int GetColumnHeight(World world, int worldX, int worldZ)
@@ -180,14 +187,14 @@ public class Chunk : MonoBehaviour
 
     internal static BlockType BlockTypeAtDepth(int columnHeight, int y) => WorldUtils.BlockTypeAtDepth(columnHeight, y);
 
-    void AddTopFace(int x, int height, int z)
+    void AddTopFace(int x, int height, int z, BlockType type)
     {
         AddQuad(
             new Vector3(x, height, z),
             new Vector3(x, height, z + 1),
             new Vector3(x + 1, height, z + 1),
             new Vector3(x + 1, height, z),
-            grassTopTriangles,
+            MaterialTriangles(type, true),
             1f,
             1f
         );
