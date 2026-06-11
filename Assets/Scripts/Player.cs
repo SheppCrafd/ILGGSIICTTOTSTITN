@@ -37,6 +37,8 @@ public class Player : MonoBehaviour
         x = world.size * 0.5f;
         y = world.size * 0.5f;
         hasVerticalPosition = false;
+        verticalVelocity = 0f;
+        isGrounded = true;
         UpdatePosition();
     }
 
