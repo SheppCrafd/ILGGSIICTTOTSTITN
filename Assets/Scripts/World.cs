@@ -100,6 +100,24 @@ public class World : MonoBehaviour
         return true;
     }
 
+    public bool TryBreakBlock(int x, int y, int z, out BlockType blockType, out Vector3 dropPosition)
+    {
+        blockType = BlockType.Air;
+        dropPosition = Vector3.zero;
+
+        if (!IsInBlockBounds(x, y, z))
+            return false;
+
+        blockType = GetBlock(x, y, z);
+
+        if (blockType == BlockType.Air)
+            return false;
+
+        SetBlock(x, z, y, BlockType.Air);
+        dropPosition = new Vector3(x + 0.5f, y + 0.7f, z + 0.5f);
+        return true;
+    }
+
     public bool TryPlaceTopBlock(int x, int z, BlockType blockType)
     {
         if (blockType == BlockType.Air || !WorldUtils.IsInBounds(x, z, size))
@@ -113,6 +131,31 @@ public class World : MonoBehaviour
 
         SetBlock(x, z, columnHeight, blockType);
         return true;
+    }
+
+    public bool TryPlaceBlock(int x, int y, int z, BlockType blockType)
+    {
+        if (!IsInBlockBounds(x, y, z) || blockType == BlockType.Air)
+            return false;
+
+        if (GetBlock(x, y, z) != BlockType.Air && BlockVisibilityMask.Opacity(x, y, z) > 0f)
+            return false;
+
+        SetBlock(x, z, y, blockType);
+        return true;
+    }
+
+    public BlockType GetBlock(int x, int y, int z)
+    {
+        if (!IsInBlockBounds(x, y, z))
+            return BlockType.Air;
+
+        return Get(x, z)[y];
+    }
+
+    public bool IsInBlockBounds(int x, int y, int z)
+    {
+        return WorldUtils.IsInBounds(x, z, size) && y >= 0 && y < height;
     }
 
     public bool SetBlock(int x, int z, int y, BlockType blockType)

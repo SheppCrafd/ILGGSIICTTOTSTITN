@@ -20,6 +20,9 @@ public class Player : MonoBehaviour
     public int hotbarSlots = 9;
     public int inventorySlots = 27;
     public float pickupRadius = 1.25f;
+    public float visibilityPrismWidth = 10f;
+    public float mouseInteractionRange = 80f;
+    public Camera viewCamera;
 
     Transform marker;
     float verticalPosition;
@@ -27,7 +30,6 @@ public class Player : MonoBehaviour
     bool hasVerticalPosition;
     bool isGrounded = true;
     bool isCrouching;
-    Vector2Int facingDirection = Vector2Int.up;
     PlayerInventory inventory;
     int selectedHotbarIndex;
     bool showInventory;
@@ -73,7 +75,6 @@ public class Player : MonoBehaviour
         if (Input.GetKey(KeyCode.D)) horizontalInput++;
         if (Input.GetKey(KeyCode.A)) horizontalInput--;
 
-        UpdateFacing(horizontalInput, verticalInput);
         isCrouching = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.C);
 
         float moveSpeed = MoveSpeed();
@@ -83,6 +84,7 @@ public class Player : MonoBehaviour
         x = Mathf.Clamp(x, 0, world.size - 1);
         y = Mathf.Clamp(y, 0, world.size - 1);
 
+        UpdateVisibilityMask();
         ResolveBlockedHorizontalMovement(previousX, previousY);
         ApplyGravity(dt, Input.GetKeyDown(KeyCode.Space));
         HandleInventoryInput();
@@ -99,17 +101,6 @@ public class Player : MonoBehaviour
             return speed * sprintMultiplier;
 
         return speed;
-    }
-
-    void UpdateFacing(int horizontalInput, int verticalInput)
-    {
-        if (horizontalInput == 0 && verticalInput == 0)
-            return;
-
-        if (Mathf.Abs(horizontalInput) > Mathf.Abs(verticalInput))
-            facingDirection = new Vector2Int(horizontalInput > 0 ? 1 : -1, 0);
-        else
-            facingDirection = new Vector2Int(0, verticalInput > 0 ? 1 : -1);
     }
 
     void ResolveBlockedHorizontalMovement(float previousX, float previousY)
@@ -172,7 +163,13 @@ public class Player : MonoBehaviour
 
         var col = world.Get(ix, iy);
 
-        return Mathf.Max(1, WorldUtils.ColumnHeight(col));
+        for (int blockY = col.Length - 1; blockY >= 0; blockY--)
+        {
+            if (col[blockY] != BlockType.Air && BlockVisibilityMask.Opacity(ix, blockY, iy) > 0f)
+                return Mathf.Max(1, blockY + 1);
+        }
+
+        return 1;
     }
 
     void UpdatePosition()
@@ -218,13 +215,15 @@ public class Player : MonoBehaviour
 
     void BreakTargetBlock()
     {
-        if (!TryGetTargetColumn(out int targetX, out int targetZ))
+        if (!TryGetMouseBlockTarget(out Vector3Int targetBlock, out _))
             return;
 
-        if (!world.TryBreakTopBlock(targetX, targetZ, out BlockType blockType, out Vector3 dropPosition))
+        if (!world.TryBreakBlock(targetBlock.x, targetBlock.y, targetBlock.z, out BlockType blockType, out Vector3 dropPosition))
             return;
 
-        RefreshColumn(targetX, targetZ);
+        BlockVisibilityMask.Invalidate();
+        UpdateVisibilityMask();
+        RefreshColumn(targetBlock.x, targetBlock.z);
         SpawnDroppedBlock(blockType, dropPosition);
     }
 
@@ -235,29 +234,98 @@ public class Player : MonoBehaviour
         if (selected == null || selected.IsEmpty)
             return;
 
-        if (!TryGetTargetColumn(out int targetX, out int targetZ))
+        if (!TryGetMouseBlockTarget(out _, out Vector3Int placeBlock))
             return;
 
-        if (GroundHeightAt(targetX, targetZ) > verticalPosition)
+        if (placeBlock.y <= Mathf.FloorToInt(verticalPosition) && placeBlock.x == Mathf.FloorToInt(x) && placeBlock.z == Mathf.FloorToInt(y))
             return;
 
-        if (!world.TryPlaceTopBlock(targetX, targetZ, selected.type))
+        if (!world.TryPlaceBlock(placeBlock.x, placeBlock.y, placeBlock.z, selected.type))
             return;
 
         inventory.TryRemoveFromSlot(selectedHotbarIndex, 1);
-        RefreshColumn(targetX, targetZ);
+        BlockVisibilityMask.Invalidate();
+        UpdateVisibilityMask();
+        RefreshColumn(placeBlock.x, placeBlock.z);
     }
 
-    bool TryGetTargetColumn(out int targetX, out int targetZ)
+    bool TryGetMouseBlockTarget(out Vector3Int targetBlock, out Vector3Int placeBlock)
     {
-        targetX = Mathf.FloorToInt(x) + facingDirection.x;
-        targetZ = Mathf.FloorToInt(y) + facingDirection.y;
-        return WorldUtils.IsInBounds(targetX, targetZ, world.size);
+        targetBlock = Vector3Int.zero;
+        placeBlock = Vector3Int.zero;
+
+        Camera camera = GetViewCamera();
+
+        if (camera == null)
+            return false;
+
+        Ray ray = camera.ScreenPointToRay(Input.mousePosition);
+        bool hasPlaceBlock = false;
+        Vector3Int lastAirLikeBlock = Vector3Int.zero;
+
+        for (float distance = 0f; distance <= mouseInteractionRange; distance += 0.1f)
+        {
+            Vector3 point = ray.origin + ray.direction * distance;
+            int blockX = Mathf.FloorToInt(point.x);
+            int blockY = Mathf.FloorToInt(point.y);
+            int blockZ = Mathf.FloorToInt(point.z);
+
+            if (!world.IsInBlockBounds(blockX, blockY, blockZ))
+                continue;
+
+            var block = new Vector3Int(blockX, blockY, blockZ);
+            BlockType type = world.GetBlock(blockX, blockY, blockZ);
+            float opacity = BlockVisibilityMask.Opacity(blockX, blockY, blockZ);
+
+            if (type == BlockType.Air || opacity <= 0f)
+            {
+                if (!hasPlaceBlock || block != lastAirLikeBlock)
+                {
+                    lastAirLikeBlock = block;
+                    hasPlaceBlock = true;
+                }
+
+                continue;
+            }
+
+            if (opacity < 0.5f)
+                continue;
+
+            targetBlock = block;
+            placeBlock = hasPlaceBlock ? lastAirLikeBlock : block + Vector3Int.up;
+            return true;
+        }
+
+        return false;
     }
 
-    float GroundHeightAt(int targetX, int targetZ)
+    Camera GetViewCamera()
     {
-        return Mathf.Max(1, WorldUtils.ColumnHeight(world.Get(targetX, targetZ)));
+        if (viewCamera != null)
+            return viewCamera;
+
+        Camera mainCamera = Camera.main;
+
+        if (mainCamera != null)
+            return mainCamera;
+
+        return FindAnyObjectByType<Camera>();
+    }
+
+    void UpdateVisibilityMask()
+    {
+        Camera camera = GetViewCamera();
+
+        if (camera != null)
+            BlockVisibilityMask.Update(world, CurrentWorldPosition(), camera.transform.position, visibilityPrismWidth);
+    }
+
+    public Vector3 CurrentWorldPosition()
+    {
+        if (!hasVerticalPosition)
+            return transform.position;
+
+        return new Vector3(x, verticalPosition + 0.15f, y);
     }
 
     void RefreshColumn(int targetX, int targetZ)
@@ -271,14 +339,26 @@ public class Player : MonoBehaviour
 
     void SpawnDroppedBlock(BlockType blockType, Vector3 dropPosition)
     {
-        GameObject item = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        BlockDatabase blockDatabase = GetBlockDatabase();
+        GameObject prefab = blockDatabase != null ? blockDatabase.Get(blockType) : null;
+        GameObject item = prefab != null ? Instantiate(prefab) : GameObject.CreatePrimitive(PrimitiveType.Cube);
+
         item.name = $"{blockType} Drop";
         item.transform.position = dropPosition;
         item.transform.localScale = Vector3.one * 0.35f;
 
         var droppedItem = item.AddComponent<DroppedBlockItem>();
         droppedItem.pickupRadius = pickupRadius;
+        droppedItem.blockDatabase = blockDatabase;
         droppedItem.Init(blockType, 1);
+    }
+
+    BlockDatabase GetBlockDatabase()
+    {
+        if (chunkManager != null && chunkManager.blockDatabase != null)
+            return chunkManager.blockDatabase;
+
+        return FindAnyObjectByType<BlockDatabase>();
     }
 
     public int TryCollectBlock(BlockType blockType, int amount)

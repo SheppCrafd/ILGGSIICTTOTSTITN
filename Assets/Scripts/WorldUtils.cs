@@ -61,6 +61,36 @@ public static class WorldUtils
         }
     }
 
+    public static Material FindBlockMaterial(BlockDatabase blockDatabase, BlockType type, string childName)
+    {
+        if (blockDatabase == null)
+            return null;
+
+        GameObject prefab = blockDatabase.Get(type);
+
+        if (prefab == null)
+            return null;
+
+        MeshRenderer[] renderers = prefab.GetComponentsInChildren<MeshRenderer>(true);
+
+        if (!string.IsNullOrEmpty(childName))
+        {
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i].gameObject.name == childName && renderers[i].sharedMaterial != null)
+                    return renderers[i].sharedMaterial;
+            }
+        }
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i].sharedMaterial != null)
+                return renderers[i].sharedMaterial;
+        }
+
+        return null;
+    }
+
     public static Material CreateFallbackMaterial(string name, Color color)
     {
         Shader shader = Shader.Find("Standard");
