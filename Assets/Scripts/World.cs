@@ -75,6 +75,57 @@ public class World : MonoBehaviour
         return cache[key];
     }
 
+    public bool TryBreakTopBlock(int x, int z, out BlockType blockType, out Vector3 dropPosition)
+    {
+        blockType = BlockType.Air;
+        dropPosition = Vector3.zero;
+
+        if (!WorldUtils.IsInBounds(x, z, size))
+            return false;
+
+        BlockType[] col = Get(x, z);
+        int columnHeight = WorldUtils.ColumnHeight(col);
+
+        if (columnHeight <= 0)
+            return false;
+
+        int blockY = columnHeight - 1;
+        blockType = col[blockY];
+
+        if (blockType == BlockType.Air)
+            return false;
+
+        SetBlock(x, z, blockY, BlockType.Air);
+        dropPosition = new Vector3(x + 0.5f, columnHeight + 0.4f, z + 0.5f);
+        return true;
+    }
+
+    public bool TryPlaceTopBlock(int x, int z, BlockType blockType)
+    {
+        if (blockType == BlockType.Air || !WorldUtils.IsInBounds(x, z, size))
+            return false;
+
+        BlockType[] col = Get(x, z);
+        int columnHeight = WorldUtils.ColumnHeight(col);
+
+        if (columnHeight >= height)
+            return false;
+
+        SetBlock(x, z, columnHeight, blockType);
+        return true;
+    }
+
+    public bool SetBlock(int x, int z, int y, BlockType blockType)
+    {
+        if (!WorldUtils.IsInBounds(x, z, size) || y < 0 || y >= height)
+            return false;
+
+        BlockType[] col = Get(x, z);
+        col[y] = blockType;
+        UpdateCompactedColumn(x, z, y, blockType);
+        return true;
+    }
+
     public void CompactChunk(int cx, int cy)
     {
         Vector2Int chunkKey = new Vector2Int(cx, cy);
@@ -95,7 +146,12 @@ public class World : MonoBehaviour
                 if (!WorldUtils.IsInBounds(worldX, worldZ, size))
                     col = EmptyColumn();
                 else if (!cache.TryGetValue(columnKey, out col))
-                    col = gen.Column(worldX, worldZ, height);
+                {
+                    col = TryLoadCompactedColumn(worldX, worldZ);
+
+                    if (col == null)
+                        col = gen.Column(worldX, worldZ, height);
+                }
 
                 for (int y = 0; y < height; y++)
                     compacted[index++] = (byte)col[y];
@@ -143,6 +199,29 @@ public class World : MonoBehaviour
             col[y] = (BlockType)compacted[index + y];
 
         return col;
+    }
+
+    void UpdateCompactedColumn(int x, int z, int y, BlockType blockType)
+    {
+        Vector2Int chunkKey = new Vector2Int(
+            WorldUtils.ToChunkCoord(x),
+            WorldUtils.ToChunkCoord(z)
+        );
+
+        if (!compactedChunkCache.TryGetValue(chunkKey, out byte[] compacted))
+            return;
+
+        int localX = x - chunkKey.x * Chunk.SIZE;
+        int localZ = z - chunkKey.y * Chunk.SIZE;
+        int index = ((localX * Chunk.SIZE) + localZ) * height + y;
+
+        if (index < 0 || index >= compacted.Length)
+        {
+            Debug.LogError($"[World] Compacted block index out of range at ({x}, {y}, {z}), chunk ({chunkKey.x}, {chunkKey.y}), index={index}, len={compacted.Length}.");
+            return;
+        }
+
+        compacted[index] = (byte)blockType;
     }
 
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
