@@ -112,6 +112,31 @@ public class MainMenuOverlay : MonoBehaviour
             player.SpawnAtWorldCenter();
         }
 
+        // Ensure a camera exists and is active. If none, create a simple main camera and point it at the player.
+        Camera cam = FindAnyObjectByType<Camera>();
+        if (cam == null)
+        {
+            var camGo = new GameObject("Main Camera");
+            cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.Skybox;
+            cam.nearClipPlane = 0.1f;
+            cam.farClipPlane = 1000f;
+            camGo.tag = "MainCamera";
+        }
+        else
+        {
+            cam.enabled = true;
+            try { cam.gameObject.tag = "MainCamera"; } catch { }
+        }
+
+        if (player != null)
+        {
+            player.viewCamera = cam;
+            // place camera behind and above the player for a reasonable default
+            cam.transform.position = new Vector3(player.x, player.CurrentWorldPosition().y + 1.5f, player.y - 4f);
+            cam.transform.LookAt(player.transform);
+        }
+
         // Ensure ChunkManager references the new world
         var cm = FindAnyObjectByType<ChunkManager>();
         if (cm != null)
