@@ -94,6 +94,50 @@ public static class WorldUtils
         return null;
     }
 
+    // Return a Texture2D suitable for UI icons for the given block type by inspecting its prefab renderers.
+    public static Texture2D FindBlockTexture(BlockDatabase blockDatabase, BlockType type)
+    {
+        if (blockDatabase == null)
+            return null;
+
+        GameObject prefab = blockDatabase.Get(type);
+        if (prefab == null)
+            return null;
+
+        MeshRenderer[] renderers = prefab.GetComponentsInChildren<MeshRenderer>(true);
+        Texture2D chosen = null;
+
+        // Prefer a renderer or texture with 'side' in the name for side-facing icons (e.g., Grass_Side)
+        foreach (var r in renderers)
+        {
+            if (r == null || r.sharedMaterial == null) continue;
+            var tex = r.sharedMaterial.mainTexture as Texture2D;
+            if (tex == null) continue;
+            if (r.gameObject.name.ToLower().Contains("side") || tex.name.ToLower().Contains("side"))
+            {
+                chosen = tex;
+                break;
+            }
+        }
+
+        // Fallback to any available renderer texture
+        if (chosen == null)
+        {
+            foreach (var r in renderers)
+            {
+                if (r == null || r.sharedMaterial == null) continue;
+                var tex = r.sharedMaterial.mainTexture as Texture2D;
+                if (tex != null)
+                {
+                    chosen = tex;
+                    break;
+                }
+            }
+        }
+
+        return chosen;
+    }
+
     public static Material CreateFallbackMaterial(string name, Color color)
     {
         string cacheKey = $"{name}_{color.r}_{color.g}_{color.b}";

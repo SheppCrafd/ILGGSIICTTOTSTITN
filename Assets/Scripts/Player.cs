@@ -651,7 +651,22 @@ public class Player : MonoBehaviour
         {
             string rest = slot.item.id.Substring("block_".Length);
             if (System.Enum.TryParse<BlockType>(rest, out BlockType bt))
-                GUI.Label(slotRect, $"{BlockLabel(bt)}\n{slot.count}");
+            {
+                // Draw icon using BlockDatabase textures (prefer side texture for grass)
+                var db = GetBlockDatabase();
+                var tex = WorldUtils.FindBlockTexture(db, bt);
+                Rect iconRect = new Rect(slotRect.x + 4, slotRect.y + 4, slotRect.width - 8, slotRect.height - 8);
+                if (tex != null)
+                {
+                    GUI.DrawTexture(iconRect, tex, ScaleMode.ScaleToFit);
+                    GUI.Label(new Rect(slotRect.x, slotRect.y, slotRect.width, 16), $"{BlockLabel(bt)}");
+                    GUI.Label(new Rect(slotRect.x, slotRect.y + slotRect.height - 18, slotRect.width, 18), $"{slot.count}");
+                }
+                else
+                {
+                    GUI.Label(slotRect, $"{BlockLabel(bt)}\n{slot.count}");
+                }
+            }
         }
     }
 
