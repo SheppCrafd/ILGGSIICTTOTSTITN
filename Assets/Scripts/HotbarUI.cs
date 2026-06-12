@@ -1,8 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 // Runtime-built hotbar UI. Reads the player's Inventory (InventorySystem.Inventory) and shows
-// the first 9 slots. Highlights Inventory.SelectedHotbarIndex. Uses placeholder colored icons.
+// the first 9 slots. Highlights Inventory.SelectedHotbarIndex. Uses block textures from Assets/Textures when available.
 [RequireComponent(typeof(Canvas))]
 public class HotbarUI : MonoBehaviour
 {
@@ -26,6 +27,8 @@ public class HotbarUI : MonoBehaviour
 
     SlotUi[] slots = new SlotUi[slotCount];
 
+    Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();
+
     void Awake()
     {
         // Try to find player if not assigned
@@ -36,9 +39,12 @@ public class HotbarUI : MonoBehaviour
         canvas = GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         var scaler = gameObject.GetComponent<CanvasScaler>() ?? gameObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920, 1080);
+        // Use ConstantPixelSize so runtime UI matches IMGUI pixel sizing and avoids unintended scaling
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
         var raycaster = gameObject.GetComponent<GraphicRaycaster>() ?? gameObject.AddComponent<GraphicRaycaster>();
+
+        // Try to load sprites from Assets/Textures (editor-only). If not available, fallback to colored squares.#if UNITY_EDITOR
+        LoadSpritesFromTexturesFolder();#endif
 
         // Create hotbar root
         var go = new GameObject("HotbarRoot", typeof(RectTransform));
@@ -117,14 +123,51 @@ public class HotbarUI : MonoBehaviour
 
             var slot = inv.GetSlot(i);
 
-            // icon: placeholder colored square based on item id
             if (slot != null && slot.item != null && slot.count > 0)
             {
-                s.icon.color = Color.white;
-                // tint based on id hash
-                s.icon.sprite = UnityEngine.Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.zero);
-                s.icon.color = IdToColor(slot.item.id);
-                s.countText.text = slot.count > 1 ? slot.count.ToString() : string.Empty;
+                // If slot represents a block, try to show its texture-based sprite when available
+                if (slot.item.id.StartsWith("block_"))
+                {
+                    string rest = slot.item.id.Substring("block_".Length);
+                    Sprite texSprite = null;
+                    // Map known block types to texture names: Grass -> Grass_Side, Dirt -> Dirt, Stone -> Stone
+                    switch (rest)
+                    {
+                        case "Grass":
+                            spriteCache.TryGetValue("Grass_Side", out texSprite);
+                            break;
+                        case "Dirt":
+                            spriteCache.TryGetValue("Dirt", out texSprite);
+                            break;
+                        case "Stone":
+                            spriteCache.TryGetValue("Stone", out texSprite);
+                            break;
+                        default:
+                            spriteCache.TryGetValue(rest, out texSprite);
+                            break;
+                    }
+
+                    if (texSprite != null)
+                    {
+                        s.icon.sprite = texSprite;
+                        s.icon.color = Color.white;
+                    }
+                    else
+                    {
+                        // fallback: colored square based on id hash
+                        s.icon.sprite = UnityEngine.Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.zero);
+                        s.icon.color = IdToColor(slot.item.id);
+                    }
+
+                    s.countText.text = slot.count > 1 ? slot.count.ToString() : string.Empty;
+                }
+                else
+                {
+                    // Non-block items: fallback to colored square
+                    s.icon.sprite = UnityEngine.Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.zero);
+                    s.icon.color = IdToColor(slot.item.id);
+                    s.countText.text = slot.count > 1 ? slot.count.ToString() : string.Empty;
+                }
             }
             else
             {
@@ -156,7 +199,10 @@ public class HotbarUI : MonoBehaviour
         int hash = id.GetHashCode();
         float r = ((hash >> 16) & 0xFF) / 255f;
         float g = ((hash >> 8) & 0xFF) / 255f;
-        float b = (hash & 0xFF) / 255f;
-        return new Color(r, g, b, 1f);
+        float b = (hash & 0xFF) / 255f;        return new Color(r, g, b, 1f);
     }
+
+#if UNITY_EDITOR
+    void LoadSpritesFromTexturesFolder()
+    {        try        {            // Use AssetDatabase in the editor to load textures from Assets/Textures            var names = new string[] { "Grass_Side", "Dirt", "Stone" };            foreach (var name in names)            {                string path = $"Assets/Textures/{name}.png";                var tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(path);                if (tex != null)                {                    var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);                    spriteCache[name] = sprite;                }            }        }        catch (System.Exception ex)        {            Debug.LogWarning($"[HotbarUI] Failed to load textures from Assets/Textures: {ex}");        }    }#endif
 }
