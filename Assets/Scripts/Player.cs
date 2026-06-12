@@ -270,11 +270,7 @@ public class Player : MonoBehaviour
 
     void HandleBlockInteraction()
     {
-        // Don't allow block interactions while main menu overlay is present
-        if (FindAnyObjectByType<MainMenuOverlay>() != null)
-            return;
-
-        // Also block interactions while IMGUI inventory panel is visible
+        // Block interactions while IMGUI inventory panel is visible
         if (showInventory)
             return;
 
