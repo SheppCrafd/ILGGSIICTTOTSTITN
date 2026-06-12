@@ -92,7 +92,8 @@ public class Player : MonoBehaviour
             UpdateVisibilityMask();
 
         ResolveBlockedHorizontalMovement(previousX, previousY);
-        ApplyGravity(dt, Input.GetKeyDown(KeyCode.Space));
+        // Use GetKey so holding space will re-trigger jumps when landing
+        ApplyGravity(dt, Input.GetKey(KeyCode.Space));
         HandleInventoryInput();
         HandleBlockInteraction();
         UpdatePosition();
@@ -169,6 +170,13 @@ public class Player : MonoBehaviour
                 verticalPosition = groundHeight;
                 verticalVelocity = 0f;
                 isGrounded = true;
+
+                // If player is holding jump (space), immediately jump again
+                if (jumpPressed && jumpHeight > 0f && gravity < 0f)
+                {
+                    verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                    isGrounded = false;
+                }
             }
         }
 
