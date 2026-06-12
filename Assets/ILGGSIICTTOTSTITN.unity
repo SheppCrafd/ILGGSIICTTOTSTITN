@@ -501,6 +501,7 @@ GameObject:
   - component: {fileID: 1375239119}
   - component: {fileID: 1375239122}
   - component: {fileID: 1375239123}
+  - component: {fileID: 1375239125}
   - component: {fileID: 1375239124}
   m_Layer: 0
   m_Name: IsoCamera
@@ -656,6 +657,18 @@ MonoBehaviour:
   player: {fileID: 385263823}
   world: {fileID: 1076639051}
   chunkManager: {fileID: 1333135190}
+--- !u!114 &1375239125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1375239118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fc2d97dc012dab4ba21d394cd1598e6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameScripts::MainMenuOverlay
 --- !u!1 &1501725499
 GameObject:
   m_ObjectHideFlags: 0
