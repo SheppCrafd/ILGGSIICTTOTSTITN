@@ -1,13 +1,3 @@
-public class ItemStack
-{
-    public BlockType type = BlockType.Air;
-    public int amount;
-
-    public bool IsEmpty => amount <= 0 || type == BlockType.Air;
-
-    public void Clear()
-    {
-        type = BlockType.Air;
-        amount = 0;
-    }
-}
+// Removed: legacy block-based stack representation.
+// PlayerInventory and legacy stack types were removed in favor of the single Inventory system.
+// File intentionally left blank to avoid compile errors if referenced elsewhere during cleanup.

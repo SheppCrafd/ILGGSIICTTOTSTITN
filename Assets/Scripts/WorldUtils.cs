@@ -101,15 +101,40 @@ public static class WorldUtils
         if (fallbackMaterialCache.TryGetValue(cacheKey, out Material cachedMaterial))
             return cachedMaterial;
 
-        Shader shader = Shader.Find("Standard");
+        // Try multiple shader candidates to support URP/HDRP and Built-in
+        string[] shaderCandidates = new string[]
+        {
+            "Universal Render Pipeline/Lit",
+            "Universal Render Pipeline/Unlit",
+            "Unlit/Color",
+            "Standard",
+            "Hidden/InternalErrorShader"
+        };
+
+        Shader shader = null;
+        foreach (var s in shaderCandidates)
+        {
+            shader = Shader.Find(s);
+            if (shader != null)
+                break;
+        }
+
         if (shader == null)
         {
-            Debug.LogError($"[WorldUtils] 'Standard' shader not found when creating fallback material '{name}'.");
+            Debug.LogError($"[WorldUtils] No suitable shader found when creating fallback material '{name}'.");
             shader = Shader.Find("Hidden/InternalErrorShader");
         }
+
         Material material = new Material(shader);
         material.name = name;
-        material.color = color;
+
+        // Attempt to set a color where supported.
+        try
+        {
+            material.color = color;
+        }
+        catch { }
+
         fallbackMaterialCache[cacheKey] = material;
         return material;
     }

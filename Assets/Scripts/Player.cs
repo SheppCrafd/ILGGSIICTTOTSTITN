@@ -23,6 +23,7 @@ public class Player : MonoBehaviour
     public float visibilityPrismWidth = 10f;
     public float mouseInteractionRange = 80f;
     public Camera viewCamera;
+    public bool debugPositionLogging = true;
 
     Transform marker;
     float verticalPosition;
@@ -30,13 +31,15 @@ public class Player : MonoBehaviour
     bool hasVerticalPosition;
     bool isGrounded = true;
     bool isCrouching;
-    PlayerInventory inventory;
-    int selectedHotbarIndex;
+    // Single canonical inventory (item-based, includes hotbar)
+    public Inventory inventory;
     bool showInventory;
 
     void Awake()
     {
-        inventory = new PlayerInventory(hotbarSlots, inventorySlots);
+        // Use a single canonical inventory: 27 slots total, first 9 are hotbar.
+        inventory = new Inventory(27, 9);
+
         CreateMarker();
     }
 
@@ -188,8 +191,37 @@ public class Player : MonoBehaviour
 
         transform.position = new Vector3(x, verticalPosition + 0.15f, y);
 
+        if (debugPositionLogging)
+        {
+            int px = Mathf.FloorToInt(x);
+            int py = Mathf.FloorToInt(y);
+            int floorY = Mathf.FloorToInt(verticalPosition);
+            string colInfo = "N/A";
+            try
+            {
+                if (world != null && world.IsInBlockBounds(px, floorY, py))
+                {
+                    var col = world.Get(px, py);
+                    int height = col != null ? col.Length : -1;
+                    int sampleBelow = Mathf.Clamp(floorY - 1, 0, Mathf.Max(0, height - 1));
+                    BlockType blockBelow = BlockType.Air;
+                    if (col != null && sampleBelow >= 0 && sampleBelow < col.Length)
+                        blockBelow = col[sampleBelow];
+                    colInfo = $"colHeight={height}, blockBelow={blockBelow}, floorY={floorY}";
+                }
+            }
+            catch (System.Exception ex)
+            {
+                colInfo = "error reading column: " + ex.Message;
+            }
+
+            Debug.Log($"[PlayerDebug] transform={transform.position}, player.x={x}, player.y={y}, z={z}, verticalPosition={verticalPosition}, floorY={floorY}, px={px},py={py}, pickupRadius={pickupRadius}, {colInfo}");
+        }
+
         if (marker != null)
         {
+            // Keep marker positioned at player's world position even if the marker is not parented to the player
+            marker.position = transform.position;
             float markerHeight = isCrouching ? markerSize * 0.6f : markerSize;
             marker.localScale = new Vector3(markerSize, markerHeight, markerSize);
         }
@@ -197,11 +229,19 @@ public class Player : MonoBehaviour
 
     void HandleInventoryInput()
     {
+        // Number keys 1-9 select hotbar slots
         for (int i = 0; i < inventory.HotbarSlotCount && i < 9; i++)
         {
             if (Input.GetKeyDown((KeyCode)((int)KeyCode.Alpha1 + i)))
-                selectedHotbarIndex = i;
+                inventory.SelectHotbarSlot(i);
         }
+
+        // Mouse wheel cycles hotbar
+        float scroll = Input.mouseScrollDelta.y;
+        if (scroll > 0f)
+            inventory.CycleHotbar(-1);
+        else if (scroll < 0f)
+            inventory.CycleHotbar(1);
 
         if (Input.GetKeyDown(KeyCode.I))
             showInventory = !showInventory;
@@ -226,8 +266,20 @@ public class Player : MonoBehaviour
         if (opacity < 0.5f)
             return;
 
+        // Determine selected tool/item (for future tool logic; no durability yet)
+        var selectedItem = inventory.GetSlot(inventory.SelectedHotbarIndex);
+        string toolId = selectedItem != null && selectedItem.item != null ? selectedItem.item.id : "none";
+
+        Debug.Log($"[Break] Attempting to break block at {targetBlock}");
         if (!world.TryBreakBlock(targetBlock.x, targetBlock.y, targetBlock.z, out BlockType blockType, out Vector3 dropPosition))
+        {
+            Debug.Log($"[Break] Failed to break block at {targetBlock}");
             return;
+        }
+
+        Debug.Log($"[Break] Broke block {blockType} at {targetBlock} -> dropPos={dropPosition}");
+
+        // (Optional) could modify drops based on toolId in future
 
         BlockVisibilityMask.Invalidate();
         UpdateVisibilityMask();
@@ -237,9 +289,17 @@ public class Player : MonoBehaviour
 
     void PlaceTargetBlock()
     {
-        ItemStack selected = inventory.GetSlot(selectedHotbarIndex);
+        // Get the item stack in the selected hotbar slot
+        var selectedItem = inventory.GetSlot(inventory.SelectedHotbarIndex);
+        if (selectedItem == null || selectedItem.item == null || selectedItem.count <= 0)
+            return;
 
-        if (selected == null || selected.IsEmpty)
+        // Ensure it represents a block (id starts with block_)
+        if (!selectedItem.item.id.StartsWith("block_"))
+            return;
+
+        string rest = selectedItem.item.id.Substring("block_".Length);
+        if (!System.Enum.TryParse<BlockType>(rest, out BlockType blockType))
             return;
 
         if (!TryGetMouseBlockTarget(out _, out Vector3Int placeBlock))
@@ -253,10 +313,10 @@ public class Player : MonoBehaviour
         if (opacity < 0.5f)
             return;
 
-        if (!world.TryPlaceBlock(placeBlock.x, placeBlock.y, placeBlock.z, selected.type))
+        if (!world.TryPlaceBlock(placeBlock.x, placeBlock.y, placeBlock.z, blockType))
             return;
 
-        inventory.TryRemoveFromSlot(selectedHotbarIndex, 1);
+        inventory.TryRemoveFromSlot(inventory.SelectedHotbarIndex, 1);
         BlockVisibilityMask.Invalidate();
         UpdateVisibilityMask();
         RefreshColumn(placeBlock.x, placeBlock.z);
@@ -349,18 +409,37 @@ public class Player : MonoBehaviour
 
     void SpawnDroppedBlock(BlockType blockType, Vector3 dropPosition)
     {
-        BlockDatabase blockDatabase = GetBlockDatabase();
-        GameObject prefab = blockDatabase != null ? blockDatabase.Get(blockType) : null;
-        GameObject item = prefab != null ? Instantiate(prefab) : GameObject.CreatePrimitive(PrimitiveType.Cube);
+        // Spawn an ItemEntity representing the block drop so the ItemPickup system can handle collection.
+        GameObject go = new GameObject($"{blockType} Drop (ItemEntity)");
+        go.transform.position = dropPosition;
+        go.transform.localScale = Vector3.one * 0.35f;
 
-        item.name = $"{blockType} Drop";
-        item.transform.position = dropPosition;
-        item.transform.localScale = Vector3.one * 0.35f;
+        // Visual: simple sphere child
+        var vis = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        vis.transform.SetParent(go.transform, false);
+        vis.transform.localScale = Vector3.one;
+        var mr = vis.GetComponent<MeshRenderer>();
+        if (mr != null)
+            mr.sharedMaterial = WorldUtils.CreateFallbackMaterial($"{blockType} Drop", WorldUtils.BlockColor(blockType));
+        var col = vis.GetComponent<Collider>();
+        if (col != null) Destroy(col);
 
-        var droppedItem = item.AddComponent<DroppedBlockItem>();
-        droppedItem.pickupRadius = pickupRadius;
-        droppedItem.blockDatabase = blockDatabase;
-        droppedItem.Init(blockType, 1);
+        var itemEntity = go.AddComponent<ItemEntity>();
+        itemEntity.item = new Item($"block_{blockType}", blockType.ToString());
+        itemEntity.count = 1;
+
+        var pickup = go.AddComponent<ItemPickup>();
+        pickup.pickupRange = pickupRadius;
+
+        // Debug: log spawn positions to help diagnose alignment
+        try
+        {
+            Debug.Log($"[SpawnDrop] Spawned {blockType} Drop at {go.transform.position}. PlayerWorldPos={CurrentWorldPosition()}, player.transform.position={transform.position}");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[SpawnDrop] Error logging spawn info: {ex}");
+        }
     }
 
     BlockDatabase GetBlockDatabase()
@@ -374,7 +453,7 @@ public class Player : MonoBehaviour
     public int TryCollectBlock(BlockType blockType, int amount)
     {
         if (inventory == null)
-            inventory = new PlayerInventory(hotbarSlots, inventorySlots);
+            inventory = new Inventory();
 
         return inventory.Add(blockType, amount);
     }
@@ -428,17 +507,21 @@ public class Player : MonoBehaviour
     {
         Color previousColor = GUI.color;
 
-        if (index == selectedHotbarIndex)
+        if (inventory != null && index == inventory.SelectedHotbarIndex)
             GUI.color = Color.yellow;
 
         GUI.Box(slotRect, string.Empty);
         GUI.color = previousColor;
 
-        ItemStack stack = inventory.GetSlot(index);
+        var slot = inventory.GetSlot(index);
         string label = $"{index + 1}";
 
-        if (stack != null && !stack.IsEmpty)
-            label = $"{index + 1}\n{BlockLabel(stack.type)}\n{stack.amount}";
+        if (slot != null && slot.item != null && slot.count > 0 && slot.item.id.StartsWith("block_"))
+        {
+            string rest = slot.item.id.Substring("block_".Length);
+            if (System.Enum.TryParse<BlockType>(rest, out BlockType bt))
+                label = $"{index + 1}\n{BlockLabel(bt)}\n{slot.count}";
+        }
 
         GUI.Label(slotRect, label);
     }
@@ -446,12 +529,17 @@ public class Player : MonoBehaviour
     void DrawInventorySlot(Rect slotRect, int index)
     {
         GUI.Box(slotRect, string.Empty);
-        ItemStack stack = inventory.GetSlot(index);
+        var slot = inventory.GetSlot(index);
 
-        if (stack == null || stack.IsEmpty)
+        if (slot == null || slot.item == null || slot.count <= 0)
             return;
 
-        GUI.Label(slotRect, $"{BlockLabel(stack.type)}\n{stack.amount}");
+        if (slot.item.id.StartsWith("block_"))
+        {
+            string rest = slot.item.id.Substring("block_".Length);
+            if (System.Enum.TryParse<BlockType>(rest, out BlockType bt))
+                GUI.Label(slotRect, $"{BlockLabel(bt)}\n{slot.count}");
+        }
     }
 
     string BlockLabel(BlockType blockType)
@@ -479,25 +567,49 @@ public class Player : MonoBehaviour
 
         GameObject dot = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         dot.name = "Player Dot";
-        dot.transform.SetParent(transform, false);
-        dot.transform.localPosition = Vector3.zero;
+        // Place marker in world root so UI parenting or canvas won't move it unexpectedly.
+        dot.transform.SetParent(null);
+        dot.transform.position = transform.position;
         dot.transform.localScale = Vector3.one * markerSize;
 
         var renderer = dot.GetComponent<MeshRenderer>();
-        renderer.sharedMaterial = WorldUtils.CreateFallbackMaterial("Player", Color.red);
-        Shader shader = Shader.Find("Standard");
-        if (shader == null)
-        {
-            Debug.LogError("[Player] 'Standard' shader not found. Ensure it is included in Always Included Shaders.");
-            return;
-        }
-        renderer.sharedMaterial = new Material(shader);
-        renderer.sharedMaterial.color = Color.red;
+        // Use robust fallback material (supports URP/HDRP/Built-in). Do NOT override with Standard shader.
+        var mat = WorldUtils.CreateFallbackMaterial("Player", Color.red);
+        if (mat != null)
+            renderer.sharedMaterial = mat;
+        renderer.enabled = true;
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
 
         var collider = dot.GetComponent<Collider>();
         if (collider != null)
             Destroy(collider);
 
         marker = dot.transform;
+
+        // Ensure marker is on the Default layer so main camera renders it by default
+        try
+        {
+            dot.layer = LayerMask.NameToLayer("Default");
+        }
+        catch { dot.layer = 0; }
+
+        // Ensure renderer is enabled
+        var rend = dot.GetComponent<MeshRenderer>();
+        if (rend != null)
+            rend.enabled = true;
+
+        // Debug: log marker and renderer info to help diagnose visibility
+        try
+        {
+            Debug.Log($"[Player] Created marker '{dot.name}' at {dot.transform.position}. Renderer enabled={rend != null && rend.enabled}, shader={(rend != null && rend.sharedMaterial && rend.sharedMaterial.shader != null ? rend.sharedMaterial.shader.name : "null")}, color={(rend != null && rend.sharedMaterial != null ? rend.sharedMaterial.color.ToString() : "null")} ");
+            Camera cam = GetViewCamera();
+            if (cam != null)
+                Debug.Log($"[Player] Camera: {cam.name}, cullingMask={cam.cullingMask}, position={cam.transform.position}");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[Player] Error logging marker info: {ex}");
+        }
     }
 }

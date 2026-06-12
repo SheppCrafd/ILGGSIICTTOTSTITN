@@ -14,6 +14,13 @@ public class Chunk : MonoBehaviour
 
     bool hasBuilt = false;
 
+    // Marks the chunk as needing a rebuild on next Build call.
+    public void MarkDirty()
+    {
+        hasBuilt = false;
+        Debug.Log($"[Chunk] MarkDirty called on chunk '{gameObject.name}'");
+    }
+
     List<Vector3> vertices = new();
     List<Vector2> uvs = new();
     List<int> grassTopTriangles = new();
@@ -60,7 +67,7 @@ public class Chunk : MonoBehaviour
         // Prevent unnecessary rebuilds - only build if this is the first time
         if (hasBuilt)
         {
-            Debug.LogWarning($"[Chunk] Skipping rebuild for already-built chunk at ({cx}, {cy}).");
+            Debug.LogWarning($"[Chunk] Skipping rebuild for already-built chunk at ({cx}, {cy}). hasBuilt={hasBuilt}");
             return;
         }
 
@@ -85,6 +92,7 @@ public class Chunk : MonoBehaviour
         {
             mesh.Clear();
             hasBuilt = true;
+            Debug.Log($"[Chunk] Built EMPTY mesh for chunk ({cx}, {cy}) — vertices=0. This may be due to visibility masking.");
             return;
         }
 
@@ -106,6 +114,7 @@ public class Chunk : MonoBehaviour
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         hasBuilt = true;
+        Debug.Log($"[Chunk] Built mesh for chunk ({cx}, {cy}) — vertices={vertices.Count}, subMeshCount={mesh.subMeshCount}");
     }
 
     void ApplyBlockMaterials(BlockDatabase blockDatabase)
