@@ -33,7 +33,7 @@ public class Player : MonoBehaviour
     bool isCrouching;
     // Single canonical inventory (item-based, includes hotbar)
     public Inventory inventory;
-    bool showInventory;
+    public bool showInventory;
 
     void Awake()
     {
@@ -48,6 +48,10 @@ public class Player : MonoBehaviour
             var kb = new GameObject("KeybindsUI");
             kb.AddComponent<KeybindsUI>();
         }
+
+        // Keep cursor unlocked and visible by default (user preference)
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
     }
 
     public void SpawnAtWorldCenter()
