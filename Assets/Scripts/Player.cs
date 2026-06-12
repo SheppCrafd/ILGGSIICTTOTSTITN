@@ -18,7 +18,7 @@ public class Player : MonoBehaviour
     public float gravity = -20f;
     public float terminalVelocity = -50f;
     public int hotbarSlots = 9;
-    public int inventorySlots = 27;
+    public int inventorySlots = 36;
     public float pickupRadius = 1.25f;
     public float visibilityPrismWidth = 10f;
     public float mouseInteractionRange = 80f;
@@ -37,8 +37,8 @@ public class Player : MonoBehaviour
 
     void Awake()
     {
-        // Use a single canonical inventory: 27 slots total, first 9 are hotbar.
-        inventory = new Inventory(27, 9);
+        // Use a single canonical inventory: 36 slots total, first 9 are hotbar (3 rows of 9 in the inventory panel).
+        inventory = new Inventory(36, 9);
 
         CreateMarker();
     }
