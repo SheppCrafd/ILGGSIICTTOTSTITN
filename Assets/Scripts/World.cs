@@ -151,6 +151,43 @@ public class World : MonoBehaviour
         Debug.Log(message);
     }
 
+    // Remove the compacted chunk bytes to free memory after the chunk GameObject has been instantiated
+    public void ReleaseCompactedChunk(int cx, int cy)
+    {
+        Vector2Int chunkKey = new Vector2Int(cx, cy);
+        if (compactedChunkCache.Remove(chunkKey))
+            LogCacheEvent($"[World] Released compacted chunk ({cx}, {cy}) from memory.");
+    }
+
+    // Sanitize chunk columns (e.g., convert grass under grass to dirt) before building meshes
+    public void SanitizeChunk(int cx, int cy)
+    {
+        for (int lx = 0; lx < Chunk.SIZE; lx++)
+        {
+            for (int lz = 0; lz < Chunk.SIZE; lz++)
+            {
+                int wx = cx * Chunk.SIZE + lx;
+                int wz = cy * Chunk.SIZE + lz;
+
+                if (!WorldUtils.IsInBounds(wx, wz, size))
+                    continue;
+
+                for (int y = 0; y < height - 1; y++)
+                {
+                    var below = this.GetBlock(wx, y, wz);
+                    var above = this.GetBlock(wx, y + 1, wz);
+                    if (below == BlockType.Grass && above == BlockType.Grass)
+                    {
+                        // convert lower grass to dirt
+                        this.SetBlock(wx, y, wz, BlockType.Dirt);
+                    }
+                }
+            }
+        }
+
+        LogCacheEvent($"[World] Sanitized chunk ({cx}, {cy}).");
+    }
+
     internal BlockType[] EmptyColumn()
     {
         BlockType[] col = new BlockType[height];

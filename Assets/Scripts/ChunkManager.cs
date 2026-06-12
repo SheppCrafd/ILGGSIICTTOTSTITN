@@ -224,9 +224,17 @@ public class ChunkManager : MonoBehaviour
             return;
         }
 
+        // Sanitize loaded chunk (grass-under-grass -> dirt) before building mesh
+        if (world != null)
+            world.SanitizeChunk(coord.x, coord.y);
+
         c.Build(world, coord.x, coord.y, blockDatabase);
 
         chunks.Add(coord, c);
+
+        // After chunk GameObject holds runtime columns, remove the compacted bytes to free memory
+        if (world != null)
+            world.ReleaseCompactedChunk(coord.x, coord.y);
 
         LogChunkEvent($"[ChunkManager] Loaded chunk ({coord.x}, {coord.y}). Active={chunks.Count}.");
     }
