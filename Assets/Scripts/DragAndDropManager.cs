@@ -4,7 +4,7 @@ using UnityEngine;
 public static class DragAndDropManager
 {
     public static bool IsDragging = false;
-    public static Inventory.ItemStack DragStack = null;
+    public static ItemStack DragStack = null;
     public static int SourceIndex = -1; // index in inventory.slots
     public static bool SourceIsHotbar = false;
 
@@ -21,7 +21,7 @@ public static class DragAndDropManager
 
         int take = Mathf.Clamp(amount, 1, s.count);
         // copy only 'take' amount
-        DragStack = new Inventory.ItemStack(s.item, take);
+        DragStack = new ItemStack(s.item, take);
         // remove 'take' from source; if emptied, null out
         if (s.count > take)
         {
