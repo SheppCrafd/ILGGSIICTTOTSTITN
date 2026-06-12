@@ -116,17 +116,34 @@ public class MainMenuOverlay : MonoBehaviour
         Camera cam = FindAnyObjectByType<Camera>();
         if (cam == null)
         {
+            Debug.Log("[MainMenu] No camera found in scene. Creating a new Main Camera.");
             var camGo = new GameObject("Main Camera");
             cam = camGo.AddComponent<Camera>();
             cam.clearFlags = CameraClearFlags.Skybox;
             cam.nearClipPlane = 0.1f;
             cam.farClipPlane = 1000f;
+            cam.depth = 0f;
+            cam.cullingMask = -1;
             camGo.tag = "MainCamera";
+            camGo.SetActive(true);
+            cam.enabled = true;
         }
         else
         {
+            Debug.Log($"[MainMenu] Found existing camera: name={cam.name}, enabled={cam.enabled}, tag={cam.gameObject.tag}");
+            cam.gameObject.SetActive(true);
             cam.enabled = true;
+            cam.cullingMask = -1;
             try { cam.gameObject.tag = "MainCamera"; } catch { }
+        }
+
+        // Force log of all cameras for diagnostics
+        var cams = Camera.allCameras;
+        Debug.Log($"[MainMenu] Camera count={cams.Length}");
+        for (int i = 0; i < cams.Length; i++)
+        {
+            var c = cams[i];
+            Debug.Log($"[MainMenu] Camera[{i}] name={c.name}, enabled={c.enabled}, activeInHierarchy={c.gameObject.activeInHierarchy}, tag={c.gameObject.tag}, depth={c.depth}");
         }
 
         if (player != null)
