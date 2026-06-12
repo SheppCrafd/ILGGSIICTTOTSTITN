@@ -239,7 +239,7 @@ public class HotbarUI : MonoBehaviour
     }
 
     // Called by UIDragHandler when user starts dragging a hotbar slot
-    public void BeginDragFromSlot(int slotIndex)
+    public void BeginDragFromSlot(int slotIndex, bool split)
     {
         if (player == null || player.inventory == null) return;
         var s = player.inventory.GetSlot(slotIndex);
@@ -254,7 +254,11 @@ public class HotbarUI : MonoBehaviour
             col = slots[slotIndex].icon.color;
         }
 
-        DragAndDropManager.StartDrag(player.inventory, slotIndex, true, tex, col);
+        int amount = s.count;
+        if (split && s.count > 1)
+            amount = Mathf.CeilToInt(s.count / 2f);
+
+        DragAndDropManager.StartDrag(player.inventory, slotIndex, true, amount, tex, col);
     }
 
     // Update drag visual position (screen space)

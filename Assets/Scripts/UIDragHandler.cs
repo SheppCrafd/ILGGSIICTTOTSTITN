@@ -15,7 +15,10 @@ public class UIDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     public void OnBeginDrag(PointerEventData eventData)
     {
         if (parent != null)
-            parent.BeginDragFromSlot(slotIndex);
+        {
+            bool split = eventData.button == PointerEventData.InputButton.Right;
+            parent.BeginDragFromSlot(slotIndex, split);
+        }
     }
 
     public void OnDrag(PointerEventData eventData)

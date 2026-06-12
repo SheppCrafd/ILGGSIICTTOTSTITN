@@ -610,7 +610,11 @@ public class Player : MonoBehaviour
                         }
                     }
 
-                    DragAndDropManager.StartDrag(inventory, index, false, tex, col);
+                    int amount = slot.count;
+                    // Right mouse button -> pick half (split)
+                    if (e.button == 1 && slot.count > 1)
+                        amount = Mathf.CeilToInt(slot.count / 2f);
+                    DragAndDropManager.StartDrag(inventory, index, false, amount, tex, col);
                     e.Use();
                     return;
                 }

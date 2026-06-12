@@ -13,16 +13,25 @@ public static class DragAndDropManager
     public static Color DragColor = Color.white;
 
     // Start dragging: remove stack from source index and store a copy
-    public static void StartDrag(Inventory inv, int sourceIndex, bool sourceIsHotbar, Texture2D texture = null, Color color = default)
+    public static void StartDrag(Inventory inv, int sourceIndex, bool sourceIsHotbar, int amount, Texture2D texture = null, Color color = default)
     {
         if (inv == null) return;
         var s = inv.GetSlot(sourceIndex);
-        if (s == null) return;
+        if (s == null || amount <= 0) return;
 
-        // copy
-        DragStack = new Inventory.ItemStack(s.item, s.count);
-        // remove from source
-        inv.slots[sourceIndex] = null;
+        int take = Mathf.Clamp(amount, 1, s.count);
+        // copy only 'take' amount
+        DragStack = new Inventory.ItemStack(s.item, take);
+        // remove 'take' from source; if emptied, null out
+        if (s.count > take)
+        {
+            s.count -= take;
+            inv.slots[sourceIndex] = s;
+        }
+        else
+        {
+            inv.slots[sourceIndex] = null;
+        }
 
         SourceIndex = sourceIndex;
         SourceIsHotbar = sourceIsHotbar;
@@ -36,9 +45,23 @@ public static class DragAndDropManager
     {
         if (!IsDragging || inv == null || DragStack == null) return;
 
-        if (inv.GetSlot(SourceIndex) == null)
+        var src = inv.GetSlot(SourceIndex);
+        if (src == null)
         {
             inv.slots[SourceIndex] = DragStack;
+        }
+        else if (src.item != null && src.item.id == DragStack.item.id)
+        {
+            int space = src.item.maxStack - src.count;
+            int move = Mathf.Min(space, DragStack.count);
+            src.count += move;
+            DragStack.count -= move;
+            if (DragStack.count > 0)
+            {
+                int leftover = inv.AddItem(DragStack.item, DragStack.count);
+                if (leftover > 0)
+                    Debug.LogWarning("[DragDrop] CancelDrag: inventory full, dropped leftover items");
+            }
         }
         else
         {
