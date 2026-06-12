@@ -81,7 +81,7 @@ public class HotbarUI : MonoBehaviour
             txtGo.transform.SetParent(slotGo.transform, false);
             var txt = txtGo.AddComponent<Text>();
             txt.alignment = TextAnchor.LowerRight;
-            txt.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             txt.fontSize = 18;
             txt.color = Color.white;
             var txtRt = txtGo.GetComponent<RectTransform>();

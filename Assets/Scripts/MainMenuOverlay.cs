@@ -40,7 +40,7 @@ public class MainMenuOverlay : MonoBehaviour
         var titleGO = new GameObject("Title", typeof(RectTransform));
         titleGO.transform.SetParent(panel.transform, false);
         var title = titleGO.AddComponent<Text>();
-        title.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        title.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         title.fontSize = 48; title.alignment = TextAnchor.UpperCenter; title.color = Color.white;
         var trt = titleGO.GetComponent<RectTransform>();
         trt.anchorMin = new Vector2(0.5f, 0.8f); trt.anchorMax = new Vector2(0.5f, 0.8f); trt.anchoredPosition = Vector2.zero; trt.sizeDelta = new Vector2(600, 80);
@@ -75,7 +75,7 @@ public class MainMenuOverlay : MonoBehaviour
         var txtGO = new GameObject("Text", typeof(RectTransform));
         txtGO.transform.SetParent(go.transform, false);
         var txt = txtGO.AddComponent<Text>();
-        txt.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         txt.fontSize = 24; txt.alignment = TextAnchor.MiddleCenter; txt.color = Color.white;
         txt.rectTransform.anchorMin = Vector2.zero; txt.rectTransform.anchorMax = Vector2.one; txt.rectTransform.offsetMin = Vector2.zero; txt.rectTransform.offsetMax = Vector2.zero;
         txt.text = label;
