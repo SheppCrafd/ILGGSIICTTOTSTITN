@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using System.Collections.Generic;
 
 // Runtime-built hotbar UI. Reads the player's Inventory (InventorySystem.Inventory) and shows
@@ -42,6 +43,13 @@ public class HotbarUI : MonoBehaviour
         // Use ConstantPixelSize so runtime UI matches IMGUI pixel sizing and avoids unintended scaling
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
         var raycaster = gameObject.GetComponent<GraphicRaycaster>() ?? gameObject.AddComponent<GraphicRaycaster>();
+
+        // Ensure an EventSystem exists so UI pointer events (drag handlers) work at runtime
+        if (FindObjectOfType<EventSystem>() == null)
+        {
+            var esGo = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+            esGo.GetComponent<EventSystem>().sendNavigationEvents = true;
+        }
 
         // Load sprites from BlockDatabase at runtime; fallback to colored squares.
         LoadSpritesFromBlockDatabase();
