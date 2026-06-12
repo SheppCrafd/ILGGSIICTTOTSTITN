@@ -55,6 +55,17 @@ public static class WorldExtensions
         if (!world.IsInBlockBounds(x, y, z)) return false;
         if (world.GetBlock(x, y, z) != BlockType.Air) return false;
         world.SetBlock(x, y, z, type);
+
+        // Grass-under-grass rule: if a grass block is placed above another grass block, convert the lower to dirt
+        if (type == BlockType.Grass && y > 0)
+        {
+            var below = world.GetBlock(x, y - 1, z);
+            if (below == BlockType.Grass)
+            {
+                world.SetBlock(x, y - 1, z, BlockType.Dirt);
+            }
+        }
+
         return true;
     }
 }
