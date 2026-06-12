@@ -135,6 +135,22 @@ public class HotbarUI : MonoBehaviour
 
     Image dragImage;
 
+    // Try drop at a given screen point (GUI coordinates: origin bottom-left). Returns true if drop handled by hotbar.
+    public bool TryDropAtScreenPoint(Vector2 screenPoint)
+    {
+        if (!DragAndDropManager.IsDragging || player == null || player.inventory == null) return false;
+        for (int i = 0; i < slotCount; i++)
+        {
+            var slotRt = slots[i].icon.rectTransform;
+            if (RectTransformUtility.RectangleContainsScreenPoint(slotRt, screenPoint, canvas.renderMode == RenderMode.ScreenSpaceCamera ? canvas.worldCamera : null))
+            {
+                DragAndDropManager.DropToSlot(player.inventory, i);
+                return true;
+            }
+        }
+        return false;
+    }
+
     void Update()
     {
         if (player == null || player.inventory == null)
@@ -160,11 +176,14 @@ public class HotbarUI : MonoBehaviour
                 dragImage.sprite = null; // will show color-only box if no sprite
                 dragImage.color = DragAndDropManager.DragColor;
             }
-        }
-        else if (dragImage != null)
-        {
-            dragImage.enabled = false;
-        }
+
+                // Ensure drag image stays on top of other UI
+                dragImage.transform.SetAsLastSibling();
+            }
+            else if (dragImage != null)
+            {
+                dragImage.enabled = false;
+            }
 
         for (int i = 0; i < slotCount; i++)
         {
@@ -287,7 +306,7 @@ public class HotbarUI : MonoBehaviour
         for (int i = 0; i < slotCount; i++)
         {
             var slotRt = slots[i].icon.rectTransform;
-            if (RectTransformUtility.RectangleContainsScreenPoint(slotRt, screenPos, null))
+            if (RectTransformUtility.RectangleContainsScreenPoint(slotRt, screenPos, canvas.renderMode == RenderMode.ScreenSpaceCamera ? canvas.worldCamera : null))
             {
                 // drop to this hotbar slot (inventory index is i)
                 DragAndDropManager.DropToSlot(player.inventory, i);
@@ -323,10 +342,49 @@ public class HotbarUI : MonoBehaviour
             };
             foreach (var kv in map)
             {
-                Material mat = WorldUtils.FindBlockMaterial(db, kv.Key, null);
-                if (mat != null && mat.mainTexture is Texture2D tex)
+                // Prefer a material whose texture or renderer name contains "Side" for side-view sprites (Grass -> Grass_Side)
+                GameObject prefab = db.Get(kv.Key);
+                if (prefab == null) continue;
+                MeshRenderer[] renderers = prefab.GetComponentsInChildren<MeshRenderer>(true);
+                Texture2D chosen = null;
+                // first try to find a renderer/material with 'Side' in name
+                foreach (var r in renderers)
                 {
-                    var sprite = Sprite.Create((Texture2D)tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+                    try
+                    {
+                        if (r == null || r.sharedMaterial == null) continue;
+                        var tex = r.sharedMaterial.mainTexture as Texture2D;
+                        if (tex == null) continue;
+                        if (r.gameObject.name.ToLower().Contains("side") || tex.name.ToLower().Contains("side") || kv.Value.ToLower().Contains("side"))
+                        {
+                            chosen = tex;
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+                // fallback to first available texture
+                if (chosen == null)
+                {
+                    foreach (var r in renderers)
+                    {
+                        try
+                        {
+                            if (r == null || r.sharedMaterial == null) continue;
+                            var tex = r.sharedMaterial.mainTexture as Texture2D;
+                            if (tex != null)
+                            {
+                                chosen = tex;
+                                break;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                if (chosen != null)
+                {
+                    var sprite = Sprite.Create(chosen, new Rect(0, 0, chosen.width, chosen.height), new Vector2(0.5f, 0.5f), 100f);
                     spriteCache[kv.Value] = sprite;
                 }
             }

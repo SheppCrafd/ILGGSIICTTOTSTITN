@@ -626,6 +626,19 @@ public class Player : MonoBehaviour
         // Mouse up while dragging (covers cases where mouse down wasn't on a slot)
         if (e.type == EventType.MouseUp && DragAndDropManager.IsDragging && slotRect.Contains(e.mousePosition))
         {
+            // Try drop onto hotbar first if hotbar exists
+            var hotbar = FindAnyObjectByType<HotbarUI>();
+            if (hotbar != null)
+            {
+                // Convert IMGUI mouse pos (top-left origin) to screen pos (bottom-left origin)
+                Vector2 screenPos = new Vector2(e.mousePosition.x, Screen.height - e.mousePosition.y);
+                if (hotbar.TryDropAtScreenPoint(screenPos))
+                {
+                    e.Use();
+                    return;
+                }
+            }
+
             DragAndDropManager.DropToSlot(inventory, index);
             e.Use();
             return;
