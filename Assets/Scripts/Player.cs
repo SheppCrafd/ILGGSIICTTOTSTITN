@@ -467,7 +467,7 @@ public class Player : MonoBehaviour
         }
     }
 
-    BlockDatabase GetBlockDatabase()
+    public BlockDatabase GetBlockDatabase()
     {
         if (chunkManager != null && chunkManager.blockDatabase != null)
             return chunkManager.blockDatabase;
