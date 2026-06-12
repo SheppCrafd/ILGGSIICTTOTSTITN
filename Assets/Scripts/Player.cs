@@ -506,6 +506,25 @@ public class Player : MonoBehaviour
 
         if (showInventory)
             DrawInventoryPanel(startX, yPosition, slotSize, gap);
+
+        // Draw drag preview for IMGUI when dragging (HotbarUI also shows a UI drag image for canvas-driven drags)
+        if (DragAndDropManager.IsDragging)
+        {
+            Event e = Event.current;
+            Vector2 mp = e.mousePosition;
+            Rect pr = new Rect(mp.x - 16, mp.y - 16, 32, 32);
+            if (DragAndDropManager.DragTexture != null)
+            {
+                GUI.DrawTexture(pr, DragAndDropManager.DragTexture);
+            }
+            else
+            {
+                Color prev = GUI.color;
+                GUI.color = DragAndDropManager.DragColor;
+                GUI.Box(pr, string.Empty);
+                GUI.color = prev;
+            }
+        }
     }
 
     void DrawInventoryPanel(int startX, int hotbarY, int slotSize, int gap)
@@ -559,6 +578,52 @@ public class Player : MonoBehaviour
     {
         GUI.Box(slotRect, string.Empty);
         var slot = inventory.GetSlot(index);
+
+        // Handle mouse interaction for dragging/dropping
+        Event e = Event.current;
+        if (e.type == EventType.MouseDown && slotRect.Contains(e.mousePosition))
+        {
+            // If we're currently dragging, drop into this slot
+            if (DragAndDropManager.IsDragging)
+            {
+                DragAndDropManager.DropToSlot(inventory, index);
+                e.Use();
+                return;
+            }
+            else
+            {
+                // start drag from this inventory slot
+                if (slot != null && slot.item != null && slot.count > 0)
+                {
+                    // Try to prepare a texture for the drag visual (if this is a block)
+                    Texture2D tex = null;
+                    Color col = Color.white;
+                    if (slot.item.id.StartsWith("block_"))
+                    {
+                        string rest = slot.item.id.Substring("block_".Length);
+                        if (System.Enum.TryParse<BlockType>(rest, out BlockType bt))
+                        {
+                            var db = GetBlockDatabase();
+                            var mat = WorldUtils.FindBlockMaterial(db, bt, null);
+                            if (mat != null && mat.mainTexture is Texture2D t)
+                                tex = t;
+                        }
+                    }
+
+                    DragAndDropManager.StartDrag(inventory, index, false, tex, col);
+                    e.Use();
+                    return;
+                }
+            }
+        }
+
+        // Mouse up while dragging (covers cases where mouse down wasn't on a slot)
+        if (e.type == EventType.MouseUp && DragAndDropManager.IsDragging && slotRect.Contains(e.mousePosition))
+        {
+            DragAndDropManager.DropToSlot(inventory, index);
+            e.Use();
+            return;
+        }
 
         if (slot == null || slot.item == null || slot.count <= 0)
             return;

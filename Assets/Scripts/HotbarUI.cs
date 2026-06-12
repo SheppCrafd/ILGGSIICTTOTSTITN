@@ -68,6 +68,11 @@ public class HotbarUI : MonoBehaviour
             float x = (i - (slotCount - 1) / 2.0f) * (slotSize + padding);
             rt.anchoredPosition = new Vector2(x, 0);
 
+            // Add drag handler to this slot so it can start drags
+            var dragHandler = slotGo.AddComponent<UIDragHandler>();
+            dragHandler.parent = this;
+            dragHandler.slotIndex = i;
+
             // background
             var bgGo = new GameObject("Background", typeof(RectTransform));
             bgGo.transform.SetParent(slotGo.transform, false);
@@ -84,6 +89,8 @@ public class HotbarUI : MonoBehaviour
             var iconRt = iconGo.GetComponent<RectTransform>();
             iconRt.anchorMin = new Vector2(0.1f, 0.1f); iconRt.anchorMax = new Vector2(0.9f, 0.9f);
             iconRt.offsetMin = Vector2.zero; iconRt.offsetMax = Vector2.zero;
+            // Make sure icon participates in raycasts for pointer events
+            icon.raycastTarget = true;
 
             // count text
             var txtGo = new GameObject("Count", typeof(RectTransform));
@@ -106,7 +113,19 @@ public class HotbarUI : MonoBehaviour
 
             slots[i] = new SlotUi { background = bg, icon = icon, countText = txt, highlight = hl };
         }
+
+        // Create drag image used to follow the mouse during drag-and-drop
+        var dragGo = new GameObject("HotbarDragImage", typeof(RectTransform));
+        dragGo.transform.SetParent(transform, false);
+        var dragImg = dragGo.AddComponent<Image>();
+        dragImg.raycastTarget = false;
+        dragImg.enabled = false;
+        var dragRt = dragGo.GetComponent<RectTransform>();
+        dragRt.sizeDelta = new Vector2(slotSize, slotSize);
+        dragImage = dragImg; // store for runtime use
     }
+
+    Image dragImage;
 
     void Update()
     {
@@ -114,6 +133,30 @@ public class HotbarUI : MonoBehaviour
             return;
 
         var inv = player.inventory;
+
+        // Update drag-image position if dragging
+        if (DragAndDropManager.IsDragging && dragImage != null)
+        {
+            Vector2 mp = Input.mousePosition;
+            var rt = dragImage.rectTransform;
+            rt.position = mp;
+            dragImage.enabled = true;
+            if (DragAndDropManager.DragTexture != null)
+            {
+                // create sprite from texture for display
+                dragImage.sprite = Sprite.Create(DragAndDropManager.DragTexture, new Rect(0,0,DragAndDropManager.DragTexture.width, DragAndDropManager.DragTexture.height), new Vector2(0.5f,0.5f));
+                dragImage.color = DragAndDropManager.DragColor;
+            }
+            else
+            {
+                dragImage.sprite = null; // will show color-only box if no sprite
+                dragImage.color = DragAndDropManager.DragColor;
+            }
+        }
+        else if (dragImage != null)
+        {
+            dragImage.enabled = false;
+        }
 
         for (int i = 0; i < slotCount; i++)
         {
@@ -158,6 +201,8 @@ public class HotbarUI : MonoBehaviour
                         s.icon.sprite = UnityEngine.Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.zero);
                         s.icon.color = IdToColor(slot.item.id);
                     }
+                    // Ensure the slot's icon is raycastable for drag handlers
+                    s.icon.raycastTarget = true;
 
                     s.countText.text = slot.count > 1 ? slot.count.ToString() : string.Empty;
                 }
@@ -191,6 +236,54 @@ public class HotbarUI : MonoBehaviour
                     s.highlight.color = new Color(1f, 1f, 0f, 0f);
             }
         }
+    }
+
+    // Called by UIDragHandler when user starts dragging a hotbar slot
+    public void BeginDragFromSlot(int slotIndex)
+    {
+        if (player == null || player.inventory == null) return;
+        var s = player.inventory.GetSlot(slotIndex);
+        if (s == null) return;
+
+        // prepare a texture for the drag image if available
+        Texture2D tex = null;
+        Color col = Color.white;
+        if (slots[slotIndex] != null && slots[slotIndex].icon != null && slots[slotIndex].icon.sprite != null)
+        {
+            tex = slots[slotIndex].icon.sprite.texture;
+            col = slots[slotIndex].icon.color;
+        }
+
+        DragAndDropManager.StartDrag(player.inventory, slotIndex, true, tex, col);
+    }
+
+    // Update drag visual position (screen space)
+    public void UpdateDrag(Vector2 screenPos)
+    {
+        if (dragImage == null) return;
+        var rt = dragImage.rectTransform;
+        rt.position = screenPos;
+    }
+
+    // End drag: try drop onto hotbar slot under mouse. If not dropped on hotbar, leave DragAndDropManager.IsDragging true
+    // so IMGUI inventory code can accept the drop when open.
+    public void EndDrag(Vector2 screenPos)
+    {
+        if (!DragAndDropManager.IsDragging || player == null || player.inventory == null) return;
+
+        // Try find a hotbar slot under the pointer
+        for (int i = 0; i < slotCount; i++)
+        {
+            var slotRt = slots[i].icon.rectTransform;
+            if (RectTransformUtility.RectangleContainsScreenPoint(slotRt, screenPos, null))
+            {
+                // drop to this hotbar slot (inventory index is i)
+                DragAndDropManager.DropToSlot(player.inventory, i);
+                return;
+            }
+        }
+
+        // Not dropped on a hotbar slot: leave drag active so IMGUI inventory can pick it up on mouse up over inventory.
     }
 
     Color IdToColor(string id)
