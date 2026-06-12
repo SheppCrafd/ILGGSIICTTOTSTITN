@@ -41,6 +41,13 @@ public class Player : MonoBehaviour
         inventory = new Inventory(27, 9);
 
         CreateMarker();
+
+        // Ensure keybinds overlay is present
+        if (FindAnyObjectByType<KeybindsUI>() == null)
+        {
+            var kb = new GameObject("KeybindsUI");
+            kb.AddComponent<KeybindsUI>();
+        }
     }
 
     public void SpawnAtWorldCenter()
@@ -244,7 +251,15 @@ public class Player : MonoBehaviour
             inventory.CycleHotbar(1);
 
         if (Input.GetKeyDown(KeyCode.I))
-            showInventory = !showInventory;
+        {
+            var invUI = FindAnyObjectByType<InventoryUI>();
+            if (invUI == null)
+            {
+                var go = new GameObject("InventoryUI");
+                invUI = go.AddComponent<InventoryUI>();
+            }
+            invUI.Toggle();
+        }
     }
 
     void HandleBlockInteraction()
