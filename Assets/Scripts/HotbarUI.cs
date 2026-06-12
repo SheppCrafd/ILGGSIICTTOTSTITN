@@ -72,7 +72,7 @@ public class HotbarUI : MonoBehaviour
             var bgGo = new GameObject("Background", typeof(RectTransform));
             bgGo.transform.SetParent(slotGo.transform, false);
             var bg = bgGo.AddComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.6f);
+            bg.color = new Color(0f, 0f, 0f, 0.15f); // reduce darkening of block textures
             var bgRt = bgGo.GetComponent<RectTransform>();
             bgRt.anchorMin = Vector2.zero; bgRt.anchorMax = Vector2.one; bgRt.offsetMin = Vector2.zero; bgRt.offsetMax = Vector2.zero;
 

@@ -494,10 +494,14 @@ public class Player : MonoBehaviour
         int startX = (Screen.width - totalWidth) / 2;
         int yPosition = Screen.height - slotSize - 18;
 
-        for (int i = 0; i < inventory.HotbarSlotCount; i++)
+        // If a Canvas-based HotbarUI exists, skip IMGUI hotbar to avoid duplicate hotbars/overdraw
+        if (FindAnyObjectByType<HotbarUI>() == null)
         {
-            Rect slotRect = new Rect(startX + i * (slotSize + gap), yPosition, slotSize, slotSize);
-            DrawHotbarSlot(slotRect, i);
+            for (int i = 0; i < inventory.HotbarSlotCount; i++)
+            {
+                Rect slotRect = new Rect(startX + i * (slotSize + gap), yPosition, slotSize, slotSize);
+                DrawHotbarSlot(slotRect, i);
+            }
         }
 
         if (showInventory)
