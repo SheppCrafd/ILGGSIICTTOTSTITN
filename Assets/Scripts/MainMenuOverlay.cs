@@ -88,8 +88,43 @@ public class MainMenuOverlay : MonoBehaviour
 
     void OnNewWorldClicked()
     {
-        Debug.Log("[MainMenu] New World clicked (no-op)");
-        // No-op per instruction
+        Debug.Log("[MainMenu] New World clicked: creating new world and removing overlay.");
+
+        // Generate a random seed
+        int seed = UnityEngine.Random.Range(0, 999999);
+
+        // Find or create World
+        var world = FindAnyObjectByType<World>();
+        if (world == null)
+        {
+            var wg = new GameObject("World");
+            world = wg.AddComponent<World>();
+        }
+
+        // Initialize world with seed
+        world.Init(seed);
+
+        // Ensure Player exists and is bound to the world
+        var player = FindAnyObjectByType<Player>();
+        if (player != null)
+        {
+            player.world = world;
+            player.SpawnAtWorldCenter();
+        }
+
+        // Ensure ChunkManager references the new world
+        var cm = FindAnyObjectByType<ChunkManager>();
+        if (cm != null)
+            cm.world = world;
+
+        // Destroy the canvas created by this overlay and this GameObject
+        if (canvas != null)
+            Destroy(canvas.gameObject);
+
+        Destroy(this.gameObject);
+
+        // Unpause
+        Time.timeScale = 1f;
     }
 
     void OnLoadWorldClicked()
