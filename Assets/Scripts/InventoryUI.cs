@@ -162,8 +162,10 @@ public class InventoryUI : MonoBehaviour
     {
         if (visible) return;
         visible = true;
-        if (canvas != null) canvas.gameObject.SetActive(true);
-        // Show cursor and unlock so user can interact with UI
+        // Use IMGUI hotbar-style inventory for visuals (Player.OnGUI). Keep runtime canvas inactive to avoid conflicts.
+        if (canvas != null) canvas.gameObject.SetActive(false);
+        if (Player != null) Player.showInventory = true;
+        // Keep cursor visible and unlocked (user preference)
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
         Time.timeScale = 0f;
@@ -174,9 +176,10 @@ public class InventoryUI : MonoBehaviour
         if (!visible) return;
         visible = false;
         if (canvas != null) canvas.gameObject.SetActive(false);
-        // Restore cursor state
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        if (Player != null) Player.showInventory = false;
+        // Keep cursor visible and unlocked (user preference)
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
         Time.timeScale = 1f;
 
         // If holding a dragStack when closing, try to place it back into inventory
