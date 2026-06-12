@@ -274,9 +274,8 @@ public class Player : MonoBehaviour
         if (FindAnyObjectByType<MainMenuOverlay>() != null)
             return;
 
-        // Also block interactions while canvas-based inventory UI is visible
-        var invUI = FindAnyObjectByType<InventoryUI>();
-        if (invUI != null && invUI.IsVisible)
+        // Also block interactions while IMGUI inventory panel is visible
+        if (showInventory)
             return;
 
         if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.F))
