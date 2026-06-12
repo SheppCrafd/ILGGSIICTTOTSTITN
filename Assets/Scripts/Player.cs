@@ -114,11 +114,24 @@ public class Player : MonoBehaviour
         if (!hasVerticalPosition)
             return;
 
-        if (GroundHeight() <= verticalPosition)
-            return;
+        // Compute ground height at the (already-updated) x,y position
+        float newGround = GroundHeight();
 
-        x = previousX;
-        y = previousY;
+        // If crouching, prevent walking off edges (don't allow dropping to a lower ground level)
+        // Small epsilon to avoid jitter from floating point noise
+        if (isCrouching && newGround < verticalPosition - 0.05f)
+        {
+            x = previousX;
+            y = previousY;
+            return;
+        }
+
+        // Prevent moving into higher solid ground that would intersect the player (original behavior)
+        if (newGround > verticalPosition + 0.001f)
+        {
+            x = previousX;
+            y = previousY;
+        }
     }
 
     void ApplyGravity(float dt, bool jumpPressed)
