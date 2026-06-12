@@ -270,6 +270,15 @@ public class Player : MonoBehaviour
 
     void HandleBlockInteraction()
     {
+        // Don't allow block interactions while main menu overlay is present
+        if (FindAnyObjectByType<MainMenuOverlay>() != null)
+            return;
+
+        // Also block interactions while canvas-based inventory UI is visible
+        var invUI = FindAnyObjectByType<InventoryUI>();
+        if (invUI != null && invUI.IsVisible)
+            return;
+
         if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.F))
             BreakTargetBlock();
 
