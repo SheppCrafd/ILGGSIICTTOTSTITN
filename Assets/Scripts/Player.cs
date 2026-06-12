@@ -538,6 +538,46 @@ public class Player : MonoBehaviour
                 GUI.Box(pr, string.Empty);
                 GUI.color = prev;
             }
+
+            // If mouse released outside any slot, cancel the drag to avoid stuck state
+            if (e.type == EventType.MouseUp)
+            {
+                bool overAny = false;
+                // check hotbar
+                for (int i = 0; i < inventory.HotbarSlotCount; i++)
+                {
+                    Rect slotRect = new Rect(startX + i * (slotSize + gap), yPosition, slotSize, slotSize);
+                    if (slotRect.Contains(e.mousePosition)) { overAny = true; break; }
+                }
+                // check inventory grid if visible
+                if (!overAny && showInventory)
+                {
+                    const int columns = 9;
+                    int rows = Mathf.CeilToInt((float)(inventory.SlotCount - inventory.HotbarSlotCount) / columns);
+                    int panelWidth = columns * slotSize + (columns - 1) * gap;
+                    int panelStartX = Mathf.Clamp(startX, 8, Mathf.Max(8, Screen.width - panelWidth - 8));
+                    int panelStartY = Mathf.Max(8, yPosition - rows * (slotSize + gap) - 18);
+                    for (int i = inventory.HotbarSlotCount; i < inventory.SlotCount; i++)
+                    {
+                        int gridIndex = i - inventory.HotbarSlotCount;
+                        int row = gridIndex / columns;
+                        int col = gridIndex % columns;
+                        Rect slotRect = new Rect(
+                            panelStartX + col * (slotSize + gap),
+                            panelStartY + row * (slotSize + gap),
+                            slotSize,
+                            slotSize
+                        );
+                        if (slotRect.Contains(e.mousePosition)) { overAny = true; break; }
+                    }
+                }
+
+                if (!overAny)
+                {
+                    DragAndDropManager.CancelDrag(inventory);
+                    e.Use();
+                }
+            }
         }
     }
 
@@ -578,6 +618,58 @@ public class Player : MonoBehaviour
         int absIndex = Mathf.Clamp(hotbarOffset + index, 0, inventory.SlotCount - 1);
         var slot = inventory.GetSlot(absIndex);
         string label = $"{index + 1}";
+
+        Event e = Event.current;
+        // Mouse interactions for hotbar slots (start drag / drop)
+        if (e.type == EventType.MouseDown && slotRect.Contains(e.mousePosition))
+        {
+            // If dragging, drop into this hotbar slot
+            if (DragAndDropManager.IsDragging)
+            {
+                DragAndDropManager.DropToSlot(inventory, absIndex);
+                e.Use();
+                return;
+            }
+            else
+            {
+                // start drag from this hotbar slot
+                if (slot != null && slot.item != null && slot.count > 0)
+                {
+                    // Prepare texture and color
+                    Texture2D tex = null;
+                    Color col = Color.white;
+                    if (slot.item.id.StartsWith("block_"))
+                    {
+                        string rest = slot.item.id.Substring("block_".Length);
+                        if (System.Enum.TryParse<BlockType>(rest, out BlockType bt))
+                        {
+                            var db = GetBlockDatabase();
+                            var t = WorldUtils.FindBlockTexture(db, bt);
+                            if (t != null) tex = t;
+                        }
+                    }
+
+                    int amount = slot.count;
+                    // Shift -> pick single, Right mouse -> split half
+                    if (e.shift)
+                        amount = 1;
+                    else if (e.button == 1 && slot.count > 1)
+                        amount = Mathf.CeilToInt(slot.count / 2f);
+
+                    DragAndDropManager.StartDrag(inventory, absIndex, true, amount, tex, col);
+                    e.Use();
+                    return;
+                }
+            }
+        }
+
+        // Mouse up while dragging -> drop into this hotbar slot
+        if (e.type == EventType.MouseUp && DragAndDropManager.IsDragging && slotRect.Contains(e.mousePosition))
+        {
+            DragAndDropManager.DropToSlot(inventory, absIndex);
+            e.Use();
+            return;
+        }
 
         if (slot != null && slot.item != null && slot.count > 0 && slot.item.id.StartsWith("block_"))
         {
