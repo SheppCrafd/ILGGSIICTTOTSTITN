@@ -43,8 +43,8 @@ public class HotbarUI : MonoBehaviour
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
         var raycaster = gameObject.GetComponent<GraphicRaycaster>() ?? gameObject.AddComponent<GraphicRaycaster>();
 
-        // Try to load sprites from Assets/Textures (editor-only). If not available, fallback to colored squares.#if UNITY_EDITOR
-        LoadSpritesFromTexturesFolder();#endif
+        // Load sprites from BlockDatabase at runtime; fallback to colored squares.
+        LoadSpritesFromBlockDatabase();
 
         // Create hotbar root
         var go = new GameObject("HotbarRoot", typeof(RectTransform));
@@ -202,7 +202,33 @@ public class HotbarUI : MonoBehaviour
         float b = (hash & 0xFF) / 255f;        return new Color(r, g, b, 1f);
     }
 
-#if UNITY_EDITOR
-    void LoadSpritesFromTexturesFolder()
-    {        try        {            // Use AssetDatabase in the editor to load textures from Assets/Textures            var names = new string[] { "Grass_Side", "Dirt", "Stone" };            foreach (var name in names)            {                string path = $"Assets/Textures/{name}.png";                var tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(path);                if (tex != null)                {                    var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);                    spriteCache[name] = sprite;                }            }        }        catch (System.Exception ex)        {            Debug.LogWarning($"[HotbarUI] Failed to load textures from Assets/Textures: {ex}");        }    }#endif
+
+    void LoadSpritesFromBlockDatabase()
+    {
+        try
+        {
+            BlockDatabase db = null;
+            if (player != null) db = player.GetBlockDatabase();
+            if (db == null) db = FindAnyObjectByType<BlockDatabase>();
+            if (db == null) return;
+            var map = new System.Collections.Generic.Dictionary<BlockType, string> {
+                { BlockType.Grass, "Grass_Side" },
+                { BlockType.Dirt, "Dirt" },
+                { BlockType.Stone, "Stone" }
+            };
+            foreach (var kv in map)
+            {
+                Material mat = WorldUtils.FindBlockMaterial(db, kv.Key, null);
+                if (mat != null && mat.mainTexture is Texture2D tex)
+                {
+                    var sprite = Sprite.Create((Texture2D)tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+                    spriteCache[kv.Value] = sprite;
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[HotbarUI] Failed to load sprites from BlockDatabase: {ex}");
+        }
+    }
 }
