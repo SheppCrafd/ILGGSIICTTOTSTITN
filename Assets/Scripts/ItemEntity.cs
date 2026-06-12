@@ -42,6 +42,7 @@ public class ItemPickup : MonoBehaviour
 {
     public float pickupRange = 2f;
     public KeyCode pickupKey = KeyCode.E;
+    public bool autoPickup = true;
 
     ItemEntity itemEntity;
     Player player;
@@ -60,11 +61,13 @@ public class ItemPickup : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[ItemPickup] Found player at {player.transform.position}, pickupRange={pickupRange}");
+            Debug.Log($"[ItemPickup] Found player at {player.transform.position}, pickupRange={pickupRange}, autoPickup={autoPickup}");
         }
     }
 
     bool sawPlayerInRange = false;
+    float pickupCooldown = 0.25f;
+    float lastAutoPickup = -999f;
 
     void Update()
     {
@@ -85,6 +88,14 @@ public class ItemPickup : MonoBehaviour
         {
             Debug.Log($"[ItemPickup] Player entered pickup range. PlayerPos={player.transform.position}, ItemPos={transform.position}, dist={dist}");
             sawPlayerInRange = true;
+        }
+
+        // Auto pickup if enabled (with small cooldown)
+        if (autoPickup && Time.time - lastAutoPickup >= pickupCooldown)
+        {
+            TryPickup();
+            lastAutoPickup = Time.time;
+            return;
         }
 
         if (Input.GetKeyDown(pickupKey))
