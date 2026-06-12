@@ -18,7 +18,7 @@ public class Player : MonoBehaviour
     public float gravity = -20f;
     public float terminalVelocity = -50f;
     public int hotbarSlots = 9;
-    public int inventorySlots = 36;
+    public int inventorySlots = 27;
     public float pickupRadius = 1.25f;
     public float visibilityPrismWidth = 10f;
     public float mouseInteractionRange = 80f;
@@ -33,25 +33,14 @@ public class Player : MonoBehaviour
     bool isCrouching;
     // Single canonical inventory (item-based, includes hotbar)
     public Inventory inventory;
-    public bool showInventory;
+    bool showInventory;
 
     void Awake()
     {
-        // Use a single canonical inventory: 36 slots total, first 9 are hotbar (3 rows of 9 in the inventory panel).
-        inventory = new Inventory(36, 9);
+        // Use a single canonical inventory: 27 slots total, first 9 are hotbar.
+        inventory = new Inventory(27, 9);
 
         CreateMarker();
-
-        // Ensure keybinds overlay is present
-        if (FindAnyObjectByType<KeybindsUI>() == null)
-        {
-            var kb = new GameObject("KeybindsUI");
-            kb.AddComponent<KeybindsUI>();
-        }
-
-        // Keep cursor unlocked and visible by default (user preference)
-        Cursor.visible = true;
-        Cursor.lockState = CursorLockMode.None;
     }
 
     public void SpawnAtWorldCenter()
@@ -255,24 +244,11 @@ public class Player : MonoBehaviour
             inventory.CycleHotbar(1);
 
         if (Input.GetKeyDown(KeyCode.I))
-        {
-            var invUI = FindAnyObjectByType<InventoryUI>();
-            if (invUI == null)
-            {
-                var go = new GameObject("InventoryUI");
-                invUI = go.AddComponent<InventoryUI>();
-            }
-            invUI.Toggle();
-        }
+            showInventory = !showInventory;
     }
 
     void HandleBlockInteraction()
     {
-        // Block interactions while inventory UI is visible
-        var invUI = FindAnyObjectByType<InventoryUI>();
-        if (invUI != null && invUI.IsVisible)
-            return;
-
         if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.F))
             BreakTargetBlock();
 
