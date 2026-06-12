@@ -135,21 +135,28 @@ public class InventoryUI : MonoBehaviour
         // drag icon follow mouse (use canvas RectTransform for correct coordinates)
         Vector2 pos;
         var canvasRect = canvas != null ? canvas.GetComponent<RectTransform>() : null;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, Input.mousePosition, canvas.worldCamera, out pos);
-        dragIcon.GetComponent<RectTransform>().anchoredPosition = pos;
+        var cam = canvas != null ? canvas.worldCamera : null;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, Input.mousePosition, cam, out pos);
 
-        if (dragStack != null)
+        if (dragIcon != null)
         {
+            var drt = dragIcon.GetComponent<RectTransform>();
+            if (drt != null)
+                drt.anchoredPosition = pos;
+
             var img = dragIcon.GetComponent<Image>();
-            img.color = new Color(1,1,1,1);
-            dragCountText.text = dragStack.count > 1 ? dragStack.count.ToString() : string.Empty;
-            img.color = IdToColor(dragStack.item.id);
-        }
-        else
-        {
-            var img = dragIcon.GetComponent<Image>();
-            img.color = new Color(1,1,1,0);
-            dragCountText.text = string.Empty;
+
+            if (dragStack != null && dragStack.item != null)
+            {
+                if (img != null) img.color = new Color(1,1,1,1);
+                if (dragCountText != null) dragCountText.text = dragStack.count > 1 ? dragStack.count.ToString() : string.Empty;
+                if (img != null) img.color = IdToColor(dragStack.item.id);
+            }
+            else
+            {
+                if (img != null) img.color = new Color(1,1,1,0);
+                if (dragCountText != null) dragCountText.text = string.Empty;
+            }
         }
     }
 
