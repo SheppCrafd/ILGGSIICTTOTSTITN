@@ -17,7 +17,8 @@ public class UIDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         if (parent != null)
         {
             bool split = eventData.button == PointerEventData.InputButton.Right;
-            parent.BeginDragFromSlot(slotIndex, split);
+            bool single = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            parent.BeginDragFromSlot(slotIndex, split, single);
         }
     }
 

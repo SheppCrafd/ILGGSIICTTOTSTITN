@@ -239,7 +239,7 @@ public class HotbarUI : MonoBehaviour
     }
 
     // Called by UIDragHandler when user starts dragging a hotbar slot
-    public void BeginDragFromSlot(int slotIndex, bool split)
+    public void BeginDragFromSlot(int slotIndex, bool split, bool single)
     {
         if (player == null || player.inventory == null) return;
         var s = player.inventory.GetSlot(slotIndex);

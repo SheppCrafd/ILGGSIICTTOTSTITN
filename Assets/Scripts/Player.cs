@@ -611,8 +611,10 @@ public class Player : MonoBehaviour
                     }
 
                     int amount = slot.count;
-                    // Right mouse button -> pick half (split)
-                    if (e.button == 1 && slot.count > 1)
+                    // Shift -> pick single, Right mouse button -> pick half (split)
+                    if (e.shift)
+                        amount = 1;
+                    else if (e.button == 1 && slot.count > 1)
                         amount = Mathf.CeilToInt(slot.count / 2f);
                     DragAndDropManager.StartDrag(inventory, index, false, amount, tex, col);
                     e.Use();
