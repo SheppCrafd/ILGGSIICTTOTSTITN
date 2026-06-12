@@ -248,24 +248,36 @@ public class Player : MonoBehaviour
         }
     }
 
+    // hotbarOffset: which inventory index maps to the hotbar's leftmost slot (0..SlotCount - HotbarSlotCount)
+    public int hotbarOffset = 0;
+
     void HandleInventoryInput()
     {
-        // Number keys 1-9 select hotbar slots
+        // Number keys 1-9 select hotbar slots (within the visible bottom row)
         for (int i = 0; i < inventory.HotbarSlotCount && i < 9; i++)
         {
             if (Input.GetKeyDown((KeyCode)((int)KeyCode.Alpha1 + i)))
                 inventory.SelectHotbarSlot(i);
         }
 
-        // Mouse wheel cycles hotbar
+        // Mouse wheel scrolls the bottom row window (hotbarOffset)
         float scroll = Input.mouseScrollDelta.y;
         if (scroll > 0f)
-            inventory.CycleHotbar(-1);
+            AdjustHotbarOffset(-1);
         else if (scroll < 0f)
-            inventory.CycleHotbar(1);
+            AdjustHotbarOffset(1);
 
-        if (Input.GetKeyDown(KeyCode.I))
+        // Toggle inventory visibility with E (top 3 rows visible). Bottom row (hotbar) is always visible.
+        if (Input.GetKeyDown(KeyCode.E))
             showInventory = !showInventory;
+    }
+
+    void AdjustHotbarOffset(int dir)
+    {
+        if (inventory == null) return;
+        int maxOffset = Mathf.Max(0, inventory.SlotCount - inventory.HotbarSlotCount);
+        hotbarOffset = (hotbarOffset + dir) % (maxOffset + 1);
+        if (hotbarOffset < 0) hotbarOffset += maxOffset + 1;
     }
 
     void HandleBlockInteraction()
@@ -292,7 +304,7 @@ public class Player : MonoBehaviour
             return;
 
         // Determine selected tool/item (for future tool logic; no durability yet)
-        var selectedItem = inventory.GetSlot(inventory.SelectedHotbarIndex);
+        var selectedItem = inventory.GetSlot(Mathf.Clamp(hotbarOffset + inventory.SelectedHotbarIndex, 0, inventory.SlotCount - 1));
         string toolId = selectedItem != null && selectedItem.item != null ? selectedItem.item.id : "none";
 
         Debug.Log($"[Break] Attempting to break block at {targetBlock}");
@@ -315,7 +327,7 @@ public class Player : MonoBehaviour
     void PlaceTargetBlock()
     {
         // Get the item stack in the selected hotbar slot
-        var selectedItem = inventory.GetSlot(inventory.SelectedHotbarIndex);
+        var selectedItem = inventory.GetSlot(Mathf.Clamp(hotbarOffset + inventory.SelectedHotbarIndex, 0, inventory.SlotCount - 1));
         if (selectedItem == null || selectedItem.item == null || selectedItem.count <= 0)
             return;
 
@@ -341,7 +353,7 @@ public class Player : MonoBehaviour
         if (!world.TryPlaceBlock(placeBlock.x, placeBlock.y, placeBlock.z, blockType))
             return;
 
-        inventory.TryRemoveFromSlot(inventory.SelectedHotbarIndex, 1);
+        inventory.TryRemoveFromSlot(Mathf.Clamp(hotbarOffset + inventory.SelectedHotbarIndex, 0, inventory.SlotCount - 1), 1);
         BlockVisibilityMask.Invalidate();
         UpdateVisibilityMask();
         RefreshColumn(placeBlock.x, placeBlock.z);
@@ -494,14 +506,16 @@ public class Player : MonoBehaviour
         int startX = (Screen.width - totalWidth) / 2;
         int yPosition = Screen.height - slotSize - 18;
 
-        // If a Canvas-based HotbarUI exists, skip IMGUI hotbar to avoid duplicate hotbars/overdraw
-        if (FindAnyObjectByType<HotbarUI>() == null)
+        // Always draw the bottom-row hotbar (now part of the inventory UI)
+        for (int i = 0; i < inventory.HotbarSlotCount; i++)
         {
-            for (int i = 0; i < inventory.HotbarSlotCount; i++)
+            Rect slotRect = new Rect(startX + i * (slotSize + gap), yPosition, slotSize, slotSize);
+            // Enlarge selected slot slightly for emphasis
+            if (i == inventory.SelectedHotbarIndex)
             {
-                Rect slotRect = new Rect(startX + i * (slotSize + gap), yPosition, slotSize, slotSize);
-                DrawHotbarSlot(slotRect, i);
+                slotRect = new Rect(slotRect.x - 3, slotRect.y - 3, slotRect.width + 6, slotRect.height + 6);
             }
+            DrawHotbarSlot(slotRect, i);
         }
 
         if (showInventory)
@@ -561,17 +575,36 @@ public class Player : MonoBehaviour
         GUI.Box(slotRect, string.Empty);
         GUI.color = previousColor;
 
-        var slot = inventory.GetSlot(index);
+        int absIndex = Mathf.Clamp(hotbarOffset + index, 0, inventory.SlotCount - 1);
+        var slot = inventory.GetSlot(absIndex);
         string label = $"{index + 1}";
 
         if (slot != null && slot.item != null && slot.count > 0 && slot.item.id.StartsWith("block_"))
         {
             string rest = slot.item.id.Substring("block_".Length);
             if (System.Enum.TryParse<BlockType>(rest, out BlockType bt))
-                label = $"{index + 1}\n{BlockLabel(bt)}\n{slot.count}";
+            {
+                // Draw icon from BlockDatabase if available
+                var db = GetBlockDatabase();
+                var tex = WorldUtils.FindBlockTexture(db, bt);
+                Rect iconRect = new Rect(slotRect.x + 4, slotRect.y + 4, slotRect.width - 8, slotRect.height - 8);
+                if (tex != null)
+                {
+                    GUI.DrawTexture(iconRect, tex, ScaleMode.ScaleToFit);
+                    GUI.Label(new Rect(slotRect.x, slotRect.y, slotRect.width, 16), $"{BlockLabel(bt)}");
+                    GUI.Label(new Rect(slotRect.x, slotRect.y + slotRect.height - 18, slotRect.width, 18), $"{slot.count}");
+                }
+                else
+                {
+                    label = $"{index + 1}\n{BlockLabel(bt)}\n{slot.count}";
+                    GUI.Label(slotRect, label);
+                }
+            }
         }
-
-        GUI.Label(slotRect, label);
+        else
+        {
+            GUI.Label(slotRect, label);
+        }
     }
 
     void DrawInventorySlot(Rect slotRect, int index)
