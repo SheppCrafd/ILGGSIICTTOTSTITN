@@ -12,7 +12,8 @@ public class HotbarUI : MonoBehaviour
     RectTransform hotbarRoot;
 
     const int slotCount = 9;
-    const int slotSize = 64;
+    // Match IMGUI hotbar sizing to avoid overlap: slotSize=58, gap=6
+    const int slotSize = 58;
     const int padding = 6;
 
     class SlotUi
@@ -46,8 +47,10 @@ public class HotbarUI : MonoBehaviour
         hotbarRoot.anchorMin = new Vector2(0.5f, 0f);
         hotbarRoot.anchorMax = new Vector2(0.5f, 0f);
         hotbarRoot.pivot = new Vector2(0.5f, 0f);
-        hotbarRoot.anchoredPosition = new Vector2(0, 20);
-        hotbarRoot.sizeDelta = new Vector2(slotCount * (slotSize + padding), slotSize + padding * 2);
+        // Place hotbar at bottom-center matching IMGUI position
+        hotbarRoot.anchoredPosition = new Vector2(0, 18);
+        int totalWidth = slotCount * slotSize + (slotCount - 1) * padding;
+        hotbarRoot.sizeDelta = new Vector2(totalWidth, slotSize + padding * 2);
 
         // Build slots
         for (int i = 0; i < slotCount; i++)
