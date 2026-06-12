@@ -162,9 +162,10 @@ public class InventoryUI : MonoBehaviour
     {
         if (visible) return;
         visible = true;
-        // Use IMGUI hotbar-style inventory for visuals (Player.OnGUI). Keep runtime canvas inactive to avoid conflicts.
-        if (canvas != null) canvas.gameObject.SetActive(false);
-        if (Player != null) Player.showInventory = true;
+        // Enable the runtime canvas so UI events (drag/drop) work.
+        if (canvas != null) canvas.gameObject.SetActive(true);
+        // Disable IMGUI inventory to avoid duplicate visuals
+        if (Player != null) Player.showInventory = false;
         // Keep cursor visible and unlocked (user preference)
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
