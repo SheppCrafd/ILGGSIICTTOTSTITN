@@ -32,6 +32,11 @@ public class HotbarUI : MonoBehaviour
 
     void Awake()
     {
+        // Hotbar scrapped — IMGUI inventory now provides the bottom-row hotbar. Disable this canvas if present.
+        Debug.Log("[HotbarUI] Disabled: using IMGUI inventory hotbar instead");
+        gameObject.SetActive(false);
+        return;
+
         // Try to find player if not assigned
         if (player == null)
             player = FindAnyObjectByType<Player>();
