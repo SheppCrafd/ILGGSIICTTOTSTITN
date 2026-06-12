@@ -17,7 +17,7 @@ public class MainMenuOverlay : MonoBehaviour
     void BuildMenu()
     {
         // Ensure EventSystem exists
-        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        if (FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
         {
             var es = new GameObject("EventSystem");
             es.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -102,7 +102,7 @@ public class MainMenuOverlay : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void EnsureExists()
     {
-        var existing = FindObjectOfType<MainMenuOverlay>();
+        var existing = FindAnyObjectByType<MainMenuOverlay>();
         if (existing == null)
         {
             var go = new GameObject("MainMenuOverlay");

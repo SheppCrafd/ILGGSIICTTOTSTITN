@@ -16,7 +16,6 @@ public class ChunkManager : MonoBehaviour
     HashSet<Vector2Int> queuedChunks = new();
     List<Vector2Int> despawnBuffer = new();
     Vector2Int lastPlayerChunk = new Vector2Int(int.MinValue, int.MinValue);
-    int lastVisibilityVersion = -1;
 
     void Update()
     {
