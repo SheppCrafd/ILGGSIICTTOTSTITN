@@ -14,6 +14,8 @@ public class InventoryUI : MonoBehaviour
 
     ItemStack dragStack = null;
     bool visible = false;
+    // Expose visibility so external systems (Player) can check and block input
+    public bool IsVisible { get { return visible; } }
 
     public InventoryUI() { }
 
@@ -130,9 +132,10 @@ public class InventoryUI : MonoBehaviour
     {
         if (!visible) return;
 
-        // drag icon follow mouse
+        // drag icon follow mouse (use canvas RectTransform for correct coordinates)
         Vector2 pos;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas.transform as RectTransform, Input.mousePosition, null, out pos);
+        var canvasRect = canvas != null ? canvas.GetComponent<RectTransform>() : null;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, Input.mousePosition, canvas.worldCamera, out pos);
         dragIcon.GetComponent<RectTransform>().anchoredPosition = pos;
 
         if (dragStack != null)
@@ -160,6 +163,9 @@ public class InventoryUI : MonoBehaviour
         if (visible) return;
         visible = true;
         if (canvas != null) canvas.gameObject.SetActive(true);
+        // Show cursor and unlock so user can interact with UI
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
         Time.timeScale = 0f;
     }
 
@@ -168,6 +174,9 @@ public class InventoryUI : MonoBehaviour
         if (!visible) return;
         visible = false;
         if (canvas != null) canvas.gameObject.SetActive(false);
+        // Restore cursor state
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
         Time.timeScale = 1f;
 
         // If holding a dragStack when closing, try to place it back into inventory
