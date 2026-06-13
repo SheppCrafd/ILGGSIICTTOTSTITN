@@ -34,7 +34,7 @@ public class HotbarUI : MonoBehaviour
     {
         // Hotbar scrapped — IMGUI inventory now provides the bottom-row hotbar. Disable this canvas if present.
         Debug.Log("[HotbarUI] Disabled: using IMGUI inventory hotbar instead");
-        gameObject.SetActive(false);
+        gameObject.SetActive(true);
         return;
 
         // Try to find player if not assigned
@@ -328,7 +328,8 @@ public class HotbarUI : MonoBehaviour
         int hash = id.GetHashCode();
         float r = ((hash >> 16) & 0xFF) / 255f;
         float g = ((hash >> 8) & 0xFF) / 255f;
-        float b = (hash & 0xFF) / 255f;        return new Color(r, g, b, 1f);
+        float b = (hash & 0xFF) / 255f;
+        return new Color(r, g, b, 1f);
     }
 
 

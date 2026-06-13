@@ -119,6 +119,56 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &75455893
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 75455895}
+  - component: {fileID: 75455894}
+  m_Layer: 0
+  m_Name: ItemEntity
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &75455894
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 75455893}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 401f4d3913700664ea52cc41addd8991, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameScripts::ItemEntity
+  item:
+    id: 
+    name: 
+    maxStack: 0
+  count: 1
+  spawnTestOnStart: 0
+--- !u!4 &75455895
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 75455893}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -88, y: 14.5, z: -88}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &385263822
 GameObject:
   m_ObjectHideFlags: 0
@@ -169,6 +219,7 @@ MonoBehaviour:
   mouseInteractionRange: 80
   viewCamera: {fileID: 1375239120}
   debugPositionLogging: 1
+  hotbarOffset: 0
 --- !u!224 &385263824
 RectTransform:
   m_ObjectHideFlags: 0
@@ -345,6 +396,52 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &943761201
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 943761203}
+  - component: {fileID: 943761202}
+  m_Layer: 0
+  m_Name: UIDragHandler
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &943761202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 943761201}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b765f16c80555594383833ae4fbbefa8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameScripts::UIDragHandler
+  parent: {fileID: 638194272}
+  slotIndex: 0
+--- !u!4 &943761203
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 943761201}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -88, y: 14.5, z: -88}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1076639050
 GameObject:
   m_ObjectHideFlags: 0
@@ -501,7 +598,6 @@ GameObject:
   - component: {fileID: 1375239119}
   - component: {fileID: 1375239122}
   - component: {fileID: 1375239123}
-  - component: {fileID: 1375239125}
   - component: {fileID: 1375239124}
   m_Layer: 0
   m_Name: IsoCamera
@@ -657,18 +753,6 @@ MonoBehaviour:
   player: {fileID: 385263823}
   world: {fileID: 1076639051}
   chunkManager: {fileID: 1333135190}
---- !u!114 &1375239125
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1375239118}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3fc2d97dc012dab4ba21d394cd1598e6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GameScripts::MainMenuOverlay
 --- !u!1 &1501725499
 GameObject:
   m_ObjectHideFlags: 0
@@ -955,6 +1039,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1850866098}
   - component: {fileID: 1850866097}
+  - component: {fileID: 1850866099}
   m_Layer: 0
   m_Name: DroppedBlockItem
   m_TagString: Untagged
@@ -994,6 +1079,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1850866099
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1850866096}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 401f4d3913700664ea52cc41addd8991, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameScripts::ItemEntity
+  item:
+    id: 
+    name: 
+    maxStack: 0
+  count: 1
+  spawnTestOnStart: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1009,3 +1112,5 @@ SceneRoots:
   - {fileID: 385263824}
   - {fileID: 1076639052}
   - {fileID: 638194274}
+  - {fileID: 75455895}
+  - {fileID: 943761203}

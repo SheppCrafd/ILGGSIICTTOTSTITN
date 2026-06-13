@@ -753,16 +753,20 @@ public class Player : MonoBehaviour
         {
             // Try drop onto hotbar first if hotbar exists
             var hotbar = FindAnyObjectByType<HotbarUI>();
-            if (hotbar != null)
+
+            if (hotbar == null || !hotbar.gameObject.activeInHierarchy)
             {
-                // Convert IMGUI mouse pos (top-left origin) to screen pos (bottom-left origin)
-                Vector2 screenPos = new Vector2(e.mousePosition.x, Screen.height - e.mousePosition.y);
-                if (hotbar.TryDropAtScreenPoint(screenPos))
-                {
-                    e.Use();
-                    return;
-                }
+                DragAndDropManager.DropToSlot(inventory, index);
+                e.Use();
+                return;
             }
+
+        if (hotbar == null || !hotbar.gameObject.activeInHierarchy)
+        {
+            DragAndDropManager.DropToSlot(inventory, index);
+            e.Use();
+            return;
+        }
 
             DragAndDropManager.DropToSlot(inventory, index);
             e.Use();
